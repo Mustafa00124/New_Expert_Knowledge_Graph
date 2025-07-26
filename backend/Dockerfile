@@ -1,8 +1,10 @@
 FROM python:3.10-slim
+
 WORKDIR /code
 ENV PORT 8000
 EXPOSE 8000
-# Install dependencies and clean up in one layer
+
+# Install system-level dependencies
 RUN apt-get update && \
    apt-get install -y --no-install-recommends \
        libmagic1 \
@@ -13,14 +15,28 @@ RUN apt-get update && \
        tesseract-ocr && \
    apt-get clean && \
    rm -rf /var/lib/apt/lists/*
+
 # Set LD_LIBRARY_PATH
 ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-# Copy requirements file and install Python dependencies
+
+# Copy requirements and constraints first (for layer caching)
 COPY requirements.txt constraints.txt /code/
-# --no-cache-dir --upgrade 
+
+# Upgrade pip
 RUN pip install --upgrade pip
-RUN pip install -r requirements.txt -c constraints.txt
-# Copy application code
+
+# Pre-install heavy packages separately to avoid redownloads if others fail
+RUN pip install --default-timeout=100 --retries=10 \
+    torch==2.3.1+cpu \
+    matplotlib==3.10.3 \
+    -c constraints.txt
+
+# Install the remaining Python dependencies
+RUN pip install --default-timeout=100 --retries=10 \
+    -r requirements.txt -c constraints.txt
+
+# Copy rest of the application code
 COPY . /code
-# Set command
-CMD ["gunicorn", "score:app", "--workers", "8","--threads", "8", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--timeout", "300"]
+
+# Run the backend using gunicorn + uvicorn workers
+CMD ["gunicorn", "score:app", "--workers", "8", "--threads", "8", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--timeout", "300"]
