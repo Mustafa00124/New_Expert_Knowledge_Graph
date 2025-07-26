@@ -1,3 +1,5 @@
+from chunk import Chunk
+from inspect import _void
 from fastapi import FastAPI, File, UploadFile, Form, Request, HTTPException
 from fastapi_health import health
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,6 +42,23 @@ load_dotenv(override=True)
 logger = CustomLogger()
 CHUNK_DIR = os.path.join(os.path.dirname(__file__), "chunks")
 MERGED_DIR = os.path.join(os.path.dirname(__file__), "merged_files")
+
+ADDITIONAL_INSTRUCTIONS = """
+For each chunk:
+
+- Extract 1-2 **KeyTakeaways**: concise core points or insights in one sentence.
+- For each KeyTakeaway, assign 1-2 **HelpfulFor** tags that describe use cases, beneficiaries, or applications (e.g., "medical students", "policy making", "AI safety").
+
+Entities:
+- Only extract high-level **domain concepts** or **experts** that reflect the main theme of the document.
+- Avoid overly specific, generic, or off-topic named entities.
+- Think of **Entities** as one-word encapsulations of the KeyTakeaways (e.g., "Deterrence", "Kant", "Entropy").
+
+Relationships:
+- Link Chunks → KeyTakeaways via `HAS_KEY_TAKEAWAY`
+- Link KeyTakeaways → HelpfulFor via `HAS_USE_CASE`
+- Link Chunks → Entities via `HAS_ENTITY`
+"""
 
 def sanitize_filename(filename):
    """
@@ -236,6 +255,26 @@ async def extract_knowledge_graph_from_file(
     """
     try:
         start_time = time.time()
+
+        #===============================#
+        if not allowedNodes:
+            allowedNodes = "Chunk,KeyTakeaway,HelpfulFor,Entity"
+
+        if not allowedRelationship:
+            allowedRelationship = (
+                # Each chunk has one or more key takeaways
+                "Chunk,HAS_KEY_TAKEAWAY,KeyTakeaway,"
+                # Each key takeaway has one or more helpful use cases
+                "KeyTakeaway,HAS_USE_CASE,HelpfulFor,"
+                # Chunks may mention key concepts or experts (Entities)
+                "Chunk,HAS_ENTITY,Entity"
+            )
+
+        if not additional_instructions:
+            additional_instructions = ADDITIONAL_INSTRUCTIONS
+
+        #===============================#
+
         graph = create_graph_database_connection(uri, userName, password, database)   
         graphDb_data_Access = graphDBdataAccess(graph)
         if source_type == 'local file':

@@ -9,7 +9,7 @@ import { connectionState, OptionType } from '../../types';
 import { useMessageContext } from '../../context/UserMessages';
 import { useMediaQuery, Spotlight, SpotlightTour, useSpotlightContext } from '@neo4j-ndl/react';
 import { useFileContext } from '../../context/UsersFiles';
-import SchemaFromTextDialog from '../../components/Popups/GraphEnhancementDialog/EnitityExtraction/SchemaFromTextDialog';
+// import SchemaFromTextDialog from '../../components/Popups/GraphEnhancementDialog/EnitityExtraction/SchemaFromTextDialog';
 import useSpeechSynthesis from '../../hooks/useSpeech';
 import FallBackDialog from '../UI/FallBackDialog';
 import { envConnectionAPI } from '../../services/ConnectAPI';
@@ -18,12 +18,12 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { showErrorToast } from '../../utils/Toasts';
 import { APP_SOURCES } from '../../utils/Constants';
 import { createDefaultFormData } from '../../API/Index';
-import LoadDBSchemaDialog from '../Popups/GraphEnhancementDialog/EnitityExtraction/LoadExistingSchema';
-import PredefinedSchemaDialog from '../Popups/GraphEnhancementDialog/EnitityExtraction/PredefinedSchemaDialog';
+// import LoadDBSchemaDialog from '../Popups/GraphEnhancementDialog/EnitityExtraction/LoadExistingSchema';
+// import PredefinedSchemaDialog from '../Popups/GraphEnhancementDialog/EnitityExtraction/PredefinedSchemaDialog';
 import { SKIP_AUTH } from '../../utils/Constants';
 import { useNavigate } from 'react-router';
 import { deduplicateByFullPattern, deduplicateNodeByValue } from '../../utils/Utils';
-import DataImporterSchemaDialog from '../Popups/GraphEnhancementDialog/EnitityExtraction/DataImporter';
+// import DataImporterSchemaDialog from '../Popups/GraphEnhancementDialog/EnitityExtraction/DataImporter';
 
 
 const GCSModal = lazy(() => import('../DataSources/GCS/GCSModal'));
@@ -159,7 +159,7 @@ const PageLayout: React.FC = () => {
   const [isRightExpanded, setIsRightExpanded] = useState<boolean>(false);
   const [showChatBot, setShowChatBot] = useState<boolean>(false);
   const [showDrawerChatbot, setShowDrawerChatbot] = useState<boolean>(true);
-  const [showEnhancementDialog, toggleEnhancementDialog] = useReducer((s) => !s, false);
+  // const [showEnhancementDialog, toggleEnhancementDialog] = useReducer((s) => !s, false);
   const [shows3Modal, toggleS3Modal] = useReducer((s) => !s, false);
   const [showGCSModal, toggleGCSModal] = useReducer((s) => !s, false);
   const [showGenericModal, toggleGenericModal] = useReducer((s) => !s, false);
@@ -571,7 +571,7 @@ const PageLayout: React.FC = () => {
           chunksExistsWithDifferentEmbedding={openConnection.chunksExistsWithDifferentDimension}
         />
       </Suspense>
-      <SchemaFromTextDialog
+      {/* <SchemaFromTextDialog
         open={showTextFromSchemaDialog.show}
         onClose={() => {
           setShowTextFromSchemaDialog({ triggeredFrom: '', show: false });
@@ -584,8 +584,8 @@ const PageLayout: React.FC = () => {
           }
         }}
         onApply={handleApplyPatternsFromText}
-      ></SchemaFromTextDialog>
-      <LoadDBSchemaDialog
+      ></SchemaFromTextDialog> */}
+      {/* <LoadDBSchemaDialog
         open={schemaLoadDialog.show}
         onClose={() => {
           setSchemaLoadDialog({ triggeredFrom: '', show: false });
@@ -598,8 +598,8 @@ const PageLayout: React.FC = () => {
           }
         }}
         onApply={handleDbApply}
-      />
-      <PredefinedSchemaDialog
+      /> */}
+      {/* <PredefinedSchemaDialog
         open={predefinedSchemaDialog.show}
         onClose={() => {
           setPredefinedSchemaDialog({ triggeredFrom: '', show: false });
@@ -612,8 +612,8 @@ const PageLayout: React.FC = () => {
           }
         }}
         onApply={handlePredinedApply}
-      ></PredefinedSchemaDialog>
-      <DataImporterSchemaDialog
+      ></PredefinedSchemaDialog> */}
+      {/* <DataImporterSchemaDialog
         open={dataImporterSchemaDialog.show}
         onClose={() => {
           setDataImporterSchemaDialog({ triggeredFrom: '', show: false });
@@ -626,7 +626,7 @@ const PageLayout: React.FC = () => {
           }
         }}
         onApply={handleImporterApply}
-      ></DataImporterSchemaDialog>
+      ></DataImporterSchemaDialog> */}
       {isLargeDesktop ? (
         <div
           className={`layout-wrapper ${!isLeftExpanded ? 'drawerdropzoneclosed' : ''} ${
@@ -659,8 +659,8 @@ const PageLayout: React.FC = () => {
             openLoadSchema={openLoadSchema}
             openPredefinedSchema={openPredefinedSchema}
             openDataImporterSchema={openDataImporterSchema}
-            showEnhancementDialog={showEnhancementDialog}
-            toggleEnhancementDialog={toggleEnhancementDialog}
+            // showEnhancementDialog={showEnhancementDialog}
+            // toggleEnhancementDialog={toggleEnhancementDialog}
             setOpenConnection={setOpenConnection}
             showDisconnectButton={showDisconnectButton}
             connectionStatus={connectionStatus}
@@ -734,8 +734,8 @@ const PageLayout: React.FC = () => {
               openLoadSchema={openLoadSchema}
               openPredefinedSchema={openPredefinedSchema}
               openDataImporterSchema={openDataImporterSchema}
-              showEnhancementDialog={showEnhancementDialog}
-              toggleEnhancementDialog={toggleEnhancementDialog}
+              // showEnhancementDialog={showEnhancementDialog}
+              // toggleEnhancementDialog={toggleEnhancementDialog}
               setOpenConnection={setOpenConnection}
               showDisconnectButton={showDisconnectButton}
               connectionStatus={connectionStatus}

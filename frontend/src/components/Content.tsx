@@ -36,7 +36,7 @@ import GraphViewModal from './Graph/GraphViewModal';
 import { lazy } from 'react';
 import FallBackDialog from './UI/FallBackDialog';
 import DeletePopUp from './Popups/DeletePopUp/DeletePopUp';
-import GraphEnhancementDialog from './Popups/GraphEnhancementDialog';
+// import GraphEnhancementDialog from './Popups/GraphEnhancementDialog';
 import { tokens } from '@neo4j-ndl/base';
 import axios from 'axios';
 import DatabaseStatusIcon from './UI/DatabaseStatusIcon';
@@ -44,7 +44,7 @@ import RetryConfirmationDialog from './Popups/RetryConfirmation/Index';
 import retry from '../services/Retry';
 import { showErrorToast, showNormalToast, showSuccessToast } from '../utils/Toasts';
 import { useMessageContext } from '../context/UserMessages';
-import PostProcessingToast from './Popups/GraphEnhancementDialog/PostProcessingCheckList/PostProcessingToast';
+// import PostProcessingToast from './Popups/GraphEnhancementDialog/PostProcessingCheckList/PostProcessingToast';
 import { getChunkText } from '../services/getChunkText';
 import ChunkPopUp from './Popups/ChunkPopUp';
 import { isExpired, isFileReadyToProcess } from '../utils/Utils';
@@ -58,8 +58,8 @@ const ConfirmationDialog = lazy(() => import('./Popups/LargeFilePopUp/Confirmati
 
 let afterFirstRender = false;
 const Content: React.FC<ContentProps> = ({
-  showEnhancementDialog,
-  toggleEnhancementDialog,
+  // showEnhancementDialog,
+  // toggleEnhancementDialog,
   setOpenConnection,
   showDisconnectButton,
   connectionStatus,
@@ -162,13 +162,13 @@ const Content: React.FC<ContentProps> = ({
     }
     if (processedCount === 1 && queue.isEmpty()) {
       (async () => {
-        showNormalToast(
-          <PostProcessingToast
-            isGdsActive={isGdsActive}
-            postProcessingTasks={postProcessingTasks}
-            isSchema={hasSelections}
-          />
-        );
+        // showNormalToast(
+        //   <PostProcessingToast
+        //     isGdsActive={isGdsActive}
+        //     postProcessingTasks={postProcessingTasks}
+        //     isSchema={hasSelections}
+        //   />
+        // );
         try {
           const payload = isGdsActive
             ? hasSelections
@@ -412,13 +412,13 @@ const Content: React.FC<ContentProps> = ({
 
   const addFilesToQueue = async (remainingFiles: CustomFile[]) => {
     if (!remainingFiles.length && postProcessingTasks.length) {
-      showNormalToast(
-        <PostProcessingToast
-          isGdsActive={isGdsActive}
-          postProcessingTasks={postProcessingTasks}
-          isSchema={hasSelections}
-        />
-      );
+      // showNormalToast(
+      //   <PostProcessingToast
+      //     isGdsActive={isGdsActive}
+      //     postProcessingTasks={postProcessingTasks}
+      //     isSchema={hasSelections}
+      //   />
+      // );
       try {
         const response = await postProcessing(postProcessingTasks);
         if (response.data.status === 'Success') {
@@ -899,7 +899,7 @@ const Content: React.FC<ContentProps> = ({
           totalPageCount={totalPageCount}
         ></ChunkPopUp>
       )}
-      {showEnhancementDialog && (
+      {/* {showEnhancementDialog && (
         <GraphEnhancementDialog
           open={showEnhancementDialog}
           onClose={toggleEnhancementDialog}
@@ -910,7 +910,7 @@ const Content: React.FC<ContentProps> = ({
           combinedRels={combinedRels}
           setCombinedRels={setCombinedRels}
         ></GraphEnhancementDialog>
-      )}
+      )} */}
       <GraphViewModal
         inspectedName={inspectedName}
         open={openGraphView}
@@ -951,7 +951,7 @@ const Content: React.FC<ContentProps> = ({
             </Typography>
           </div>
           <div className='enhancement-btn__wrapper'>
-            <ButtonWithToolTip
+            {/* <ButtonWithToolTip
               placement='top'
               text='Enhance graph quality'
               label='Graph Enhancemnet Settings'
@@ -961,7 +961,7 @@ const Content: React.FC<ContentProps> = ({
               size={isTablet ? 'small' : 'medium'}
             >
               Graph Enhancement
-            </ButtonWithToolTip>
+            </ButtonWithToolTip> */}
             {!connectionStatus ? (
               <SpotlightTarget
                 id='connectbutton'

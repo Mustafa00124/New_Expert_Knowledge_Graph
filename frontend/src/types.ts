@@ -154,8 +154,8 @@ export interface ContentProps {
   openTextSchema: () => void;
   openLoadSchema: () => void;
   openPredefinedSchema: () => void;
-  showEnhancementDialog: boolean;
-  toggleEnhancementDialog: () => void;
+  showEnhancementDialog?: boolean;
+  toggleEnhancementDialog?: () => void;
   setOpenConnection: Dispatch<SetStateAction<connectionState>>;
   showDisconnectButton: boolean;
   connectionStatus: boolean;
