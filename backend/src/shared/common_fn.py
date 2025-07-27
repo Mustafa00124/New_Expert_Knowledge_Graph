@@ -1,7 +1,7 @@
 import hashlib
 import logging
 from src.document_sources.youtube import create_youtube_url
-from langchain_huggingface import HuggingFaceEmbeddings
+# Removed HuggingFaceEmbeddings import - using OpenAI embeddings only
 from langchain_google_vertexai import VertexAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_neo4j import Neo4jGraph
@@ -82,14 +82,13 @@ def load_embedding_model(embedding_model_name: str):
         logging.info(f"Embedding: Using Vertex AI Embeddings , Dimension:{dimension}")
     elif embedding_model_name == "titan":
         embeddings = get_bedrock_embeddings()
-        dimension = 1536
+        dimension = 384
         logging.info(f"Embedding: Using bedrock titan Embeddings , Dimension:{dimension}")
     else:
-        embeddings = HuggingFaceEmbeddings(
-            model_name="all-MiniLM-L6-v2"#, cache_folder="/embedding_model"
-        )
-        dimension = 384
-        logging.info(f"Embedding: Using Langchain HuggingFaceEmbeddings , Dimension:{dimension}")
+        # Default to OpenAI embeddings instead of local SentenceTransformer
+        embeddings = OpenAIEmbeddings()
+        dimension = 1536
+        logging.info(f"Embedding: Using OpenAI Embeddings (default) , Dimension:{dimension}")
     return embeddings, dimension
 
 def save_graphDocuments_in_neo4j(graph: Neo4jGraph, graph_document_list: List[GraphDocument], max_retries=3, delay=1):

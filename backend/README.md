@@ -54,7 +54,7 @@ Update the environment variable in `.env` file. Refer example.env in backend fol
 
 `OPENAI_API_KEY`: Open AI key to use incase of openai embeddings
 
-`EMBEDDING_MODEL` : "all-MiniLM-L6-v2" or "openai" or "vertexai"
+`EMBEDDING_MODEL` : "openai" or "vertexai" (default: "openai")
 
 `NEO4J_URI` : Neo4j URL
 
