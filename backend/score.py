@@ -1,4 +1,3 @@
-from chunk import Chunk
 from inspect import _void
 from fastapi import FastAPI, File, UploadFile, Form, Request, HTTPException
 from fastapi_health import health
