@@ -634,7 +634,6 @@ const PageLayout: React.FC = () => {
           } ${!isRightExpanded && !isLeftExpanded ? 'drawerclosed' : ''}`}
         >
           <SideNav
-            toggles3Modal={toggleS3Modal}
             toggleGCSModal={toggleGCSModal}
             toggleGenericModal={toggleGenericModal}
             isExpanded={isLeftExpanded}
@@ -643,12 +642,10 @@ const PageLayout: React.FC = () => {
           />
           {isLeftExpanded && (
             <DrawerDropzone
-              shows3Modal={shows3Modal}
               showGCSModal={showGCSModal}
               showGenericModal={showGenericModal}
               toggleGCSModal={toggleGCSModal}
               toggleGenericModal={toggleGenericModal}
-              toggleS3Modal={toggleS3Modal}
               isExpanded={isLeftExpanded}
             />
           )}
@@ -690,7 +687,6 @@ const PageLayout: React.FC = () => {
             setIsRightExpanded={setIsRightExpanded}
             clearHistoryData={clearHistoryData}
             toggleGCSModal={toggleGCSModal}
-            toggles3Modal={toggleS3Modal}
             toggleGenericModal={toggleGenericModal}
             setIsleftExpanded={setIsLeftExpanded}
           />
@@ -700,11 +696,6 @@ const PageLayout: React.FC = () => {
           {APP_SOURCES.includes('gcs') && (
             <Suspense fallback={<FallBackDialog />}>
               <GCSModal openGCSModal={toggleGCSModal} open={showGCSModal} hideModal={toggleGCSModal} />
-            </Suspense>
-          )}
-          {APP_SOURCES.includes('s3') && (
-            <Suspense fallback={<FallBackDialog />}>
-              <S3Modal hideModal={toggleS3Modal} open={shows3Modal} />
             </Suspense>
           )}
 
@@ -719,7 +710,6 @@ const PageLayout: React.FC = () => {
           </Suspense>
           <div className='layout-wrapper drawerclosed'>
             <SideNav
-              toggles3Modal={toggleS3Modal}
               toggleGCSModal={toggleGCSModal}
               toggleGenericModal={toggleGenericModal}
               isExpanded={isLeftExpanded}
@@ -765,7 +755,6 @@ const PageLayout: React.FC = () => {
               setIsRightExpanded={setIsRightExpanded}
               clearHistoryData={clearHistoryData}
               toggleGCSModal={toggleGCSModal}
-              toggles3Modal={toggleS3Modal}
               toggleGenericModal={toggleGenericModal}
               setIsleftExpanded={setIsLeftExpanded}
             />

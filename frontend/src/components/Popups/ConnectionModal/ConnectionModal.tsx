@@ -1,4 +1,4 @@
-import { Button, Dialog, TextInput, Select, Banner, Dropzone, Typography, TextLink, Flex } from '@neo4j-ndl/react';
+import { Button, Dialog, TextInput, Select, Banner, Typography, TextLink, Flex } from '@neo4j-ndl/react';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { connectAPI } from '../../../services/ConnectAPI';
 import { useCredentials } from '../../../context/UserCredentials';
@@ -27,6 +27,7 @@ export default function ConnectionModal({
   let initialport;
   let initialprotocol;
   let initialuserdbvectorindex;
+  let initialOpenAIKey;
   if (prefilledconnection) {
     let parsedcontent = JSON.parse(prefilledconnection);
     initialuserdbvectorindex = parsedcontent.userDbVectorIndex;
@@ -36,6 +37,7 @@ export default function ConnectionModal({
     initialusername = parsedcontent?.user;
     initialport = initialuri.split(':')[1];
     initialprotocol = urisplit[0];
+    initialOpenAIKey = parsedcontent?.openaiApiKey;
   }
   const protocols = ['neo4j', 'neo4j+s', 'neo4j+ssc', 'bolt', 'bolt+s', 'bolt+ssc'];
   const [protocol, setProtocol] = useState<string>(initialprotocol ?? 'neo4j+s');
@@ -44,6 +46,7 @@ export default function ConnectionModal({
   const [database, setDatabase] = useState<string>(initialdb ?? 'neo4j');
   const [username, setUsername] = useState<string>(initialusername ?? 'neo4j');
   const [password, setPassword] = useState<string>('');
+  const [openaiApiKey, setOpenaiApiKey] = useState<string>(initialOpenAIKey ?? '');
   const [connectionMessage, setMessage] = useState<Message | null>({ type: 'unknown', content: '' });
   const { user } = useAuth0();
   const {
@@ -66,6 +69,7 @@ export default function ConnectionModal({
   const databaseRef = useRef<HTMLInputElement>(null);
   const userNameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const openaiKeyRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (searchParams.has('connectURL')) {
       const url = searchParams.get('connectURL');
@@ -181,41 +185,6 @@ export default function ConnectionModal({
     });
   };
 
-  const onDropHandler = async (files: Partial<globalThis.File>[]) => {
-    setIsLoading(true);
-    if (files.length) {
-      const [file] = files;
-      try {
-        if (file.text && file.size !== 0) {
-          const text = await file.text();
-          const lines = text.split(/\r?\n/);
-          const configObject = lines.reduce((acc: Record<string, string>, line: string) => {
-            if (line.startsWith('#') || line.trim() === '') {
-              return acc;
-            }
-
-            const [key, value] = line.split('=');
-            if (['NEO4J_URI', 'NEO4J_USERNAME', 'NEO4J_PASSWORD', 'NEO4J_DATABASE', 'NEO4J_PORT'].includes(key)) {
-              acc[key] = value;
-            }
-            return acc;
-          }, {});
-          parseAndSetURI(configObject.NEO4J_URI);
-          setUsername(configObject.NEO4J_USERNAME ?? 'neo4j');
-          setPassword(configObject.NEO4J_PASSWORD ?? '');
-          setDatabase(configObject.NEO4J_DATABASE ?? 'neo4j');
-          setPort(configObject.NEO4J_PORT ?? '7687');
-        } else {
-          setMessage({ type: 'danger', content: 'Please drop a valid file' });
-        }
-      } catch (err: any) {
-        console.log({ err });
-        setMessage({ type: 'danger', content: err.message });
-      }
-    }
-    setIsLoading(false);
-  };
-
   const submitConnection = async (email: string) => {
     const connectionURI = `${protocol}://${URI}${URI.split(':')[1] ? '' : `:${port}`}`;
     const credential = {
@@ -225,6 +194,7 @@ export default function ConnectionModal({
       database: database,
       port: port,
       email,
+      openaiApiKey,
     };
     setUserCredentials(credential);
     createDefaultFormData(credential);
@@ -271,6 +241,7 @@ export default function ConnectionModal({
             chunksTobeProcess,
             email: user?.email ?? '',
             connection: 'connectAPI',
+            openaiApiKey,
           })
         );
         setUserDbVectorIndex(response.data.data.db_vector_dimension);
@@ -357,7 +328,7 @@ export default function ConnectionModal({
       }
     };
 
-  const isDisabled = useMemo(() => !username || !URI || !password, [username, URI, password]);
+  const isDisabled = useMemo(() => !username || !URI || !password || !openaiApiKey, [username, URI, password, openaiApiKey]);
 
   return (
     <>
@@ -373,11 +344,11 @@ export default function ConnectionModal({
           'aria-labelledby': 'form-dialog-title',
         }}
       >
-        <Dialog.Header htmlAttributes={{ id: 'form-dialog-title' }}>Connect to Neo4j</Dialog.Header>
+        <Dialog.Header htmlAttributes={{ id: 'form-dialog-title' }}>Connect to Database</Dialog.Header>
         <Dialog.Content className='n-flex n-flex-col n-gap-token-4'>
           <Typography variant='body-medium' className='mb-4'>
             <TextLink type='external' href='https://console.neo4j.io/'>
-              Don't have a Neo4j instance? Start for free today
+              Don't have a database instance? Start for free today
             </TextLink>
           </Typography>
           {connectionMessage?.type !== 'unknown' &&
@@ -399,114 +370,127 @@ export default function ConnectionModal({
                 usage='inline'
               ></Banner>
             ))}
-          <div className='n-flex max-h-44'>
-            <Dropzone
-              isTesting={false}
-              customTitle={<>{buttonCaptions.dropYourCreds}</>}
-              className='n-p-6 end-0 top-0 w-full h-full'
-              acceptedFileExtensions={['.txt', '.env']}
-              dropZoneOptions={{
-                onDrop: (f: Partial<globalThis.File>[]) => {
-                  onDropHandler(f);
-                },
-                maxSize: 500,
-                onDropRejected: (e) => {
-                  if (e.length) {
-                    setMessage({ type: 'danger', content: 'Failed To Upload, File is larger than 500 bytes' });
-                  }
-                },
-              }}
-            />
-          </div>
-          <div className='n-flex n-flex-row n-flex-wrap'>
-            <Select
-              label='Protocol'
-              type='select'
-              size='medium'
-              isDisabled={false}
-              selectProps={{
-                onChange: (newValue) => newValue && setProtocol(newValue.value),
-                options: protocols.map((option) => ({ label: option, value: option })),
-                value: { label: protocol, value: protocol },
-              }}
-              className='w-1/4 inline-block'
-              isFluid
-              htmlAttributes={{
-                id: 'protocol',
-              }}
-            />
-            <div className='ml-[5%] w-[70%] inline-block'>
-              <TextInput
-                ref={uriRef}
-                htmlAttributes={{
-                  id: 'url',
-                  autoFocus: true,
-                  onPaste: (e) => handleHostPasteChange(e),
-                  onKeyDown: (e) => handleKeyPress(user?.email ?? '')(e, databaseRef),
-                  'aria-label': 'Connection URI',
-                }}
-                value={URI}
-                isDisabled={false}
-                label='URI'
-                isFluid={true}
-                onChange={(e) => setURI(e.target.value)}
-              />
-            </div>
-          </div>
-          <form>
+          
+          {/* OpenAI API Key Section */}
+          <div className='n-flex n-flex-col n-gap-token-2'>
+            <Typography variant='body-medium' className='font-semibold'>
+              OpenAI Configuration
+            </Typography>
             <TextInput
-              ref={databaseRef}
+              ref={openaiKeyRef}
               htmlAttributes={{
-                id: 'database',
+                id: 'openai-api-key',
                 onKeyDown: handleKeyPress(user?.email ?? ''),
-                'aria-label': 'Database',
-                placeholder: 'neo4j',
+                type: 'password',
+                'aria-label': 'OpenAI API Key',
+                placeholder: 'sk-...',
+                autoComplete: 'off',
               }}
-              value={database}
+              value={openaiApiKey}
               isDisabled={false}
-              label='Database'
+              label='OpenAI API Key'
               isFluid={true}
               isRequired={true}
-              onChange={(e) => setDatabase(e.target.value)}
+              onChange={(e) => setOpenaiApiKey(e.target.value)}
               className='w-full'
             />
-            <div className='n-flex n-flex-row n-flex-wrap mb-2'>
-              <div className='w-[48.5%] mr-1.5 inline-block'>
+          </div>
+
+          {/* Neo4j Connection Section */}
+          <div className='n-flex n-flex-col n-gap-token-2'>
+            <Typography variant='body-medium' className='font-semibold'>
+              Database Connection
+            </Typography>
+            <div className='n-flex n-flex-row n-flex-wrap'>
+              <Select
+                label='Protocol'
+                type='select'
+                size='medium'
+                isDisabled={false}
+                selectProps={{
+                  onChange: (newValue) => newValue && setProtocol(newValue.value),
+                  options: protocols.map((option) => ({ label: option, value: option })),
+                  value: { label: protocol, value: protocol },
+                }}
+                className='w-1/4 inline-block'
+                isFluid
+                htmlAttributes={{
+                  id: 'protocol',
+                }}
+              />
+              <div className='ml-[5%] w-[70%] inline-block'>
                 <TextInput
-                  ref={userNameRef}
+                  ref={uriRef}
                   htmlAttributes={{
-                    id: 'username',
-                    onKeyDown: handleKeyPress(user?.email ?? ''),
-                    'aria-label': 'Username',
-                    placeholder: 'neo4j',
+                    id: 'url',
+                    autoFocus: true,
+                    onPaste: (e) => handleHostPasteChange(e),
+                    onKeyDown: (e) => handleKeyPress(user?.email ?? '')(e, databaseRef),
+                    'aria-label': 'Connection URI',
                   }}
-                  value={username}
+                  value={URI}
                   isDisabled={false}
-                  label='Username'
+                  label='URI'
                   isFluid={true}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </div>
-              <div className='w-[48.5%] ml-[1.5%] inline-block'>
-                <TextInput
-                  ref={passwordRef}
-                  htmlAttributes={{
-                    id: 'password',
-                    onKeyDown: handleKeyPress(user?.email ?? ''),
-                    type: 'password',
-                    'aria-label': 'Password',
-                    placeholder: 'password',
-                    autoComplete: 'current-password',
-                  }}
-                  value={password}
-                  isDisabled={false}
-                  label='Password'
-                  isFluid={true}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => setURI(e.target.value)}
                 />
               </div>
             </div>
-          </form>
+            <form>
+              <TextInput
+                ref={databaseRef}
+                htmlAttributes={{
+                  id: 'database',
+                  onKeyDown: handleKeyPress(user?.email ?? ''),
+                  'aria-label': 'Database',
+                  placeholder: 'neo4j',
+                }}
+                value={database}
+                isDisabled={false}
+                label='Database'
+                isFluid={true}
+                isRequired={true}
+                onChange={(e) => setDatabase(e.target.value)}
+                className='w-full'
+              />
+              <div className='n-flex n-flex-row n-flex-wrap mb-2'>
+                <div className='w-[48.5%] mr-1.5 inline-block'>
+                  <TextInput
+                    ref={userNameRef}
+                    htmlAttributes={{
+                      id: 'username',
+                      onKeyDown: handleKeyPress(user?.email ?? ''),
+                      'aria-label': 'Username',
+                      placeholder: 'neo4j',
+                    }}
+                    value={username}
+                    isDisabled={false}
+                    label='Username'
+                    isFluid={true}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                </div>
+                <div className='w-[48.5%] ml-[1.5%] inline-block'>
+                  <TextInput
+                    ref={passwordRef}
+                    htmlAttributes={{
+                      id: 'password',
+                      onKeyDown: handleKeyPress(user?.email ?? ''),
+                      type: 'password',
+                      'aria-label': 'Password',
+                      placeholder: 'password',
+                      autoComplete: 'current-password',
+                    }}
+                    value={password}
+                    isDisabled={false}
+                    label='Password'
+                    isFluid={true}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+              </div>
+            </form>
+          </div>
           <Flex flexDirection='row' justifyContent='flex-end'>
             <Button
               isLoading={isLoading}

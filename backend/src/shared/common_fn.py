@@ -71,9 +71,20 @@ def create_graph_database_connection(uri, userName, password, database):
 
 def load_embedding_model(embedding_model_name: str):
     if embedding_model_name == "openai":
-        embeddings = OpenAIEmbeddings()
+        # Check if we have a global OpenAI API key set
+        try:
+            from src.shared.openai_config import get_openai_api_key
+            global_api_key = get_openai_api_key()
+            if global_api_key:
+                embeddings = OpenAIEmbeddings(openai_api_key=global_api_key)
+                logging.info(f"Embedding: Using OpenAI Embeddings with global API key, Dimension:1536")
+            else:
+                embeddings = OpenAIEmbeddings()
+                logging.info(f"Embedding: Using OpenAI Embeddings with environment API key, Dimension:1536")
+        except ImportError:
+            embeddings = OpenAIEmbeddings()
+            logging.info(f"Embedding: Using OpenAI Embeddings with environment API key, Dimension:1536")
         dimension = 1536
-        logging.info(f"Embedding: Using OpenAI Embeddings , Dimension:{dimension}")
     elif embedding_model_name == "vertexai":        
         embeddings = VertexAIEmbeddings(
             model="textembedding-gecko@003"
@@ -86,9 +97,20 @@ def load_embedding_model(embedding_model_name: str):
         logging.info(f"Embedding: Using bedrock titan Embeddings , Dimension:{dimension}")
     else:
         # Default to OpenAI embeddings instead of local SentenceTransformer
-        embeddings = OpenAIEmbeddings()
+        # Check if we have a global OpenAI API key set
+        try:
+            from src.shared.openai_config import get_openai_api_key
+            global_api_key = get_openai_api_key()
+            if global_api_key:
+                embeddings = OpenAIEmbeddings(openai_api_key=global_api_key)
+                logging.info(f"Embedding: Using OpenAI Embeddings (default) with global API key, Dimension:1536")
+            else:
+                embeddings = OpenAIEmbeddings()
+                logging.info(f"Embedding: Using OpenAI Embeddings (default) with environment API key, Dimension:1536")
+        except ImportError:
+            embeddings = OpenAIEmbeddings()
+            logging.info(f"Embedding: Using OpenAI Embeddings (default) with environment API key, Dimension:1536")
         dimension = 1536
-        logging.info(f"Embedding: Using OpenAI Embeddings (default) , Dimension:{dimension}")
     return embeddings, dimension
 
 def save_graphDocuments_in_neo4j(graph: Neo4jGraph, graph_document_list: List[GraphDocument], max_retries=3, delay=1):

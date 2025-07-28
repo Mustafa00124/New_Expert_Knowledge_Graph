@@ -45,7 +45,7 @@ export default function Profile() {
             </Typography>
 
             <Typography variant='body-small' className='p-0.5'>
-              {user?.email ?? 'john.doe@neo4j.com'}
+              {user?.email ?? 'john.doe@example.com'}
             </Typography>
 
             <Menu className='mt-1.5 ml-4' anchorRef={iconbtnRef} isOpen={showMenu} onClose={handleClose}>

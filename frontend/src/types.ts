@@ -53,6 +53,7 @@ export type UserCredentials = {
   database?: string;
   email: string;
   connection?: string;
+  openaiApiKey?: string;
 } & { [key: string]: any };
 
 export interface SourceNode extends Omit<CustomFileBase, 'relationshipsCount' | 'createdAt'> {
@@ -132,7 +133,6 @@ export interface SideNavProps {
   setIsRightExpanded?: Dispatch<SetStateAction<boolean>>;
   messages?: Messages[];
   clearHistoryData?: boolean;
-  toggles3Modal: () => void;
   toggleGCSModal: () => void;
   toggleGenericModal: () => void;
   setIsleftExpanded?: Dispatch<SetStateAction<boolean>>;
@@ -140,10 +140,8 @@ export interface SideNavProps {
 
 export interface DrawerProps {
   isExpanded: boolean;
-  shows3Modal: boolean;
   showGCSModal: boolean;
   showGenericModal: boolean;
-  toggleS3Modal: () => void;
   toggleGCSModal: () => void;
   toggleGenericModal: () => void;
 }

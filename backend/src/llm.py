@@ -29,6 +29,18 @@ def get_llm(model: str):
         logging.error(err)
         raise Exception(err)
     
+    # Check if we have a global OpenAI API key set
+    try:
+        from src.shared.openai_config import get_openai_api_key
+        global_api_key = get_openai_api_key()
+        if global_api_key and "openai" in model:
+            # Use the global API key for OpenAI models
+            model_name = env_value.split(",")[0]
+            env_value = f"{model_name},{global_api_key}"
+            logging.info(f"Using global OpenAI API key for model: {model}")
+    except ImportError:
+        pass  # If we can't import, continue with environment variable
+    
     logging.info("Model: {}".format(env_key))
     try:
         if "gemini" in model:

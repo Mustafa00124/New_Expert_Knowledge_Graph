@@ -38,6 +38,11 @@ from starlette.requests import Request
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
+# Import OpenAI config module
+from src.shared.openai_config import set_openai_api_key
+
+
+
 logger = CustomLogger()
 CHUNK_DIR = os.path.join(os.path.dirname(__file__), "chunks")
 MERGED_DIR = os.path.join(os.path.dirname(__file__), "merged_files")
@@ -135,6 +140,8 @@ if is_gemini_enabled:
     add_routes(app,ChatVertexAI(), path="/vertexai")
 
 app.add_api_route("/health", health([healthy_condition, healthy]))
+
+
 
 
 
@@ -335,6 +342,7 @@ async def extract_knowledge_graph_from_file(
         logger.log_struct(result, "INFO")
         result.update(uri_latency)
         logging.info(f"extraction completed in {extract_api_time:.2f} seconds for file name {file_name}")
+        
         return create_api_response('Success', data=result, file_source= source_type)
     except LLMGraphBuilderException as e:
         error_message = str(e)
@@ -350,6 +358,7 @@ async def extract_knowledge_graph_from_file(
                     'allowedNodes': allowedNodes, 'allowedRelationship': allowedRelationship}
         logger.log_struct(json_obj, "INFO")
         logging.exception(f'File Failed in extraction: {e}')
+        
         return create_api_response("Failed", message = error_message, error=error_message, file_name=file_name)
     except Exception as e:
         message=f"Failed To Process File:{file_name} or LLM Unable To Parse Content "
@@ -366,6 +375,7 @@ async def extract_knowledge_graph_from_file(
                     'allowedNodes': allowedNodes, 'allowedRelationship': allowedRelationship}
         logger.log_struct(json_obj, "ERROR")
         logging.exception(f'File Failed in extraction: {e}')
+        
         return create_api_response('Failed', message=message + error_message[:100], error=error_message, file_name = file_name)
     finally:
         gc.collect()
@@ -440,6 +450,7 @@ async def post_processing(uri=Form(None), userName=Form(None), password=Form(Non
         elapsed_time = end - start
         json_obj = {'api_name': api_name, 'db_url': uri, 'userName':userName, 'database':database, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
         logger.log_struct(json_obj)
+        
         return create_api_response('Success', data=count_response, message='All tasks completed successfully')
     
     except Exception as e:
@@ -447,6 +458,7 @@ async def post_processing(uri=Form(None), userName=Form(None), password=Form(Non
         error_message = str(e)
         message = f"Unable to complete tasks"
         logging.exception(f'Exception in post_processing tasks: {error_message}')
+        
         return create_api_response(job_status, message=message, error=error_message)
     
     finally:
@@ -480,6 +492,7 @@ async def chat_bot(uri=Form(None),model=Form(None),userName=Form(None), password
         message="Unable to get chat response"
         error_message = str(e)
         logging.exception(f'Exception in chat bot:{error_message}')
+        
         return create_api_response(job_status, message=message, error=error_message,data=mode)
     finally:
         gc.collect()
@@ -578,9 +591,26 @@ async def clear_chat_bot(uri=Form(None),userName=Form(None), password=Form(None)
         gc.collect()
             
 @app.post("/connect")
-async def connect(uri=Form(None), userName=Form(None), password=Form(None), database=Form(None),email=Form(None)):
+async def connect(uri=Form(None), userName=Form(None), password=Form(None), database=Form(None), email=Form(None), openaiApiKey=Form(None)):
     try:
         start = time.time()
+        
+        # Store OpenAI API key globally for use in other endpoints
+        if openaiApiKey:
+            set_openai_api_key(openaiApiKey)
+            # Set environment variables for current process
+            os.environ['OPENAI_API_KEY'] = openaiApiKey
+            # Set LLM model configurations for OpenAI models
+            os.environ['LLM_MODEL_CONFIG_openai_gpt_3.5'] = f"gpt-3.5-turbo-0125,{openaiApiKey}"
+            os.environ['LLM_MODEL_CONFIG_openai_gpt_4o_mini'] = f"gpt-4o-mini-2024-07-18,{openaiApiKey}"
+            os.environ['LLM_MODEL_CONFIG_openai_gpt_4o'] = f"gpt-4o-2024-11-20,{openaiApiKey}"
+            os.environ['LLM_MODEL_CONFIG_openai_gpt_4.1_mini'] = f"gpt-4.1-mini,{openaiApiKey}"
+            os.environ['LLM_MODEL_CONFIG_openai_gpt_4.1'] = f"gpt-4.1,{openaiApiKey}"
+            os.environ['LLM_MODEL_CONFIG_openai_gpt_o3_mini'] = f"o3-mini-2025-01-31,{openaiApiKey}"
+            # Set embedding model to OpenAI
+            os.environ['EMBEDDING_MODEL'] = 'openai'
+            logging.info("OpenAI API key and model configurations set successfully")
+        
         graph = create_graph_database_connection(uri, userName, password, database)
         result = await asyncio.to_thread(connection_check_and_get_vector_dimensions, graph, database)
         gcs_file_cache = os.environ.get('GCS_FILE_CACHE')
@@ -1129,6 +1159,8 @@ async def get_schema_visualization(uri=Form(None), userName=Form(None), password
         return create_api_response("Failed", message=message, error=error_message)
     finally:
         gc.collect()
+
+
 
 if __name__ == "__main__":
     uvicorn.run(app)

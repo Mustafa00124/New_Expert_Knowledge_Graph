@@ -466,6 +466,7 @@ async def processing_source(uri, userName, password, database, model, file_name,
 async def processing_chunks(chunkId_chunkDoc_list,graph,uri, userName, password, database,file_name,model,allowedNodes,allowedRelationship, chunks_to_combine, node_count, rel_count, additional_instructions=None):
   #create vector index and update chunk node with embedding
   latency_processing_chunk = {}
+  
   if graph is not None:
     if graph._driver._closed:
       graph = create_graph_database_connection(uri, userName, password, database)
@@ -508,6 +509,7 @@ async def processing_chunks(chunkId_chunkDoc_list,graph,uri, userName, password,
   count_response = graphDb_data_Access.update_node_relationship_count(file_name)
   node_count = count_response[file_name].get('nodeCount',"0")
   rel_count = count_response[file_name].get('relationshipCount',"0")
+  
   return node_count,rel_count,latency_processing_chunk
 
 def get_chunkId_chunkDoc_list(graph, file_name, pages, token_chunk_size, chunk_overlap, retry_condition):

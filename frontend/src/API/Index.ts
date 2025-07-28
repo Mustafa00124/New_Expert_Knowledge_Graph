@@ -24,6 +24,9 @@ export const createDefaultFormData = (userCredentials: UserCredentials) => {
   if (userCredentials?.email) {
     formData.append('email', userCredentials?.email);
   }
+  if (userCredentials?.openaiApiKey) {
+    formData.append('openaiApiKey', userCredentials?.openaiApiKey);
+  }
   api.interceptors.request.use(
     (config) => {
       if (config.data instanceof FormData) {

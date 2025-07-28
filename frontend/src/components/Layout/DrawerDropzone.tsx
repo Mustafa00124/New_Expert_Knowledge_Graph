@@ -1,7 +1,6 @@
 import React, { useMemo, Suspense, lazy } from 'react';
 import { Drawer, Flex, StatusIndicator, Typography, useMediaQuery } from '@neo4j-ndl/react';
 import DropZone from '../DataSources/Local/DropZone';
-import S3Component from '../DataSources/AWS/S3Bucket';
 import GCSButton from '../DataSources/GCS/GCSButton';
 import CustomAlert from '../UI/Alert';
 import FallBackDialog from '../UI/FallBackDialog';
@@ -13,14 +12,11 @@ import GenericModal from '../WebSources/GenericSourceModal';
 import { DrawerProps } from '../../types';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useFileContext } from '../../context/UsersFiles';
-const S3Modal = lazy(() => import('../DataSources/AWS/S3Modal'));
 const GCSModal = lazy(() => import('../DataSources/GCS/GCSModal'));
 const DrawerDropzone: React.FC<DrawerProps> = ({
   isExpanded,
-  toggleS3Modal,
   toggleGCSModal,
   toggleGenericModal,
-  shows3Modal,
   showGCSModal,
   showGenericModal,
 }) => {
@@ -101,14 +97,7 @@ const DrawerDropzone: React.FC<DrawerProps> = ({
                           />
                         </div>
                       )}
-                      {APP_SOURCES.includes('s3') && (
-                        <div className='outline-dashed imageBg w-[245px]'>
-                          <S3Component openModal={toggleS3Modal} />
-                          <Suspense fallback={<FallBackDialog />}>
-                            <S3Modal hideModal={toggleS3Modal} open={shows3Modal} />
-                          </Suspense>
-                        </div>
-                      )}
+
                       {APP_SOURCES.includes('gcs') && (
                         <div className='outline-dashed imageBg w-[245px]'>
                           <GCSButton openModal={toggleGCSModal} />
@@ -161,14 +150,7 @@ const DrawerDropzone: React.FC<DrawerProps> = ({
                       />
                     </div>
                   )}
-                  {APP_SOURCES.includes('s3') && (
-                    <div className='outline-dashed imageBg w-[245px]'>
-                      <S3Component openModal={toggleS3Modal} />
-                      <Suspense fallback={<FallBackDialog />}>
-                        <S3Modal hideModal={toggleS3Modal} open={shows3Modal} />
-                      </Suspense>
-                    </div>
-                  )}
+
                   {APP_SOURCES.includes('gcs') && (
                     <div className='outline-dashed imageBg w-[245px]'>
                       <GCSButton openModal={toggleGCSModal} />

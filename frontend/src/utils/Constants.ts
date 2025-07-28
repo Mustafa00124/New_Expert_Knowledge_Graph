@@ -6,7 +6,7 @@ import schemaExamples from '../assets/newSchema.json';
 export const APP_SOURCES =
   process.env.VITE_REACT_APP_SOURCES !== ''
     ? (process.env.VITE_REACT_APP_SOURCES?.split(',') as string[])
-    : ['s3', 'local', 'wiki', 'youtube', 'web'];
+    : ['local', 'wiki', 'youtube', 'web'];
 
 export const llms =
   process.env?.VITE_LLM_MODELS?.trim() != ''
@@ -198,12 +198,12 @@ export const buttonCaptions = {
   gcs: 'GCS',
   amazon: 'Amazon S3',
   noLables: 'No Labels Found in the Database',
-  dropYourCreds: 'Drop your neo4j credentials file here',
+  dropYourCreds: 'Drop your neo4j credentials file here', // Deprecated - no longer used
   analyze: 'Analyze text to extract graph schema',
   connect: 'Connect',
   disconnect: 'Disconnect',
   submit: 'Submit',
-  connectToNeo4j: 'Connect to Neo4j',
+  connectToNeo4j: 'Connect to Database',
   cancel: 'Cancel',
   details: 'Details',
   continueSettings: 'Continue',

@@ -1,10 +1,7 @@
-import Neo4jLogoBW from '../../logo.svg';
-import Neo4jLogoColor from '../../logo-color.svg';
+
 import {
   MoonIconOutline,
   SunIconOutline,
-  CodeBracketSquareIconOutline,
-  InformationCircleIconOutline,
   ArrowTopRightOnSquareIconOutline,
   TrashIconOutline,
   ArrowLeftIconOutline,
@@ -24,6 +21,8 @@ import { HeaderProp } from '../../types';
 import { downloadClickHandler, getIsLoading } from '../../utils/Utils';
 import Profile from '../User/Profile';
 import { useAuth0 } from '@auth0/auth0-react';
+import Neo4jLogoBW from '../../logo.svg';
+import Neo4jLogoColor from '../../logo-color.svg';
 
 const Header: React.FC<HeaderProp> = ({ chatOnly, deleteOnClick, setOpenConnection, showBackButton }) => {
   const { colorMode, toggleColorMode } = useContext(ThemeWrapperContext);
@@ -88,12 +87,13 @@ const Header: React.FC<HeaderProp> = ({ chatOnly, deleteOnClick, setOpenConnecti
         >
           <section className='flex w-1/3 shrink-0 grow-0 items-center min-w-[200px]'>
             <Typography variant='h1'>
-              <img
-                src={colorMode === 'dark' ? Neo4jLogoBW : Neo4jLogoColor}
-                className='h-8! min-h-8 min-w-8'
-                alt='Neo4j Logo'
-              />
+                <img
+                  src={colorMode === 'dark' ? Neo4jLogoBW : Neo4jLogoColor}
+                  className='h-8! min-h-8 min-w-8'
+                  alt='Neo4j Logo'
+                />
             </Typography>
+
           </section>
           {!chatOnly ? (
             <section className='items-center justify-end w-1/3 grow-0 flex'>
@@ -102,26 +102,6 @@ const Header: React.FC<HeaderProp> = ({ chatOnly, deleteOnClick, setOpenConnecti
                   className='inline-flex gap-x-1'
                   style={{ display: 'flex', flexGrow: 0, alignItems: 'center', gap: '4px' }}
                 >
-                  <IconButtonWithToolTip
-                    text={tooltips.documentation}
-                    onClick={() => handleURLClick('https://neo4j.com/labs/genai-ecosystem/llm-graph-builder')}
-                    size='large'
-                    clean
-                    placement='left'
-                    label={tooltips.documentation}
-                  >
-                    <InformationCircleIconOutline className='n-size-token-7' />
-                  </IconButtonWithToolTip>
-
-                  <IconButtonWithToolTip
-                    label={tooltips.github}
-                    onClick={() => handleURLClick('https://github.com/neo4j-labs/llm-graph-builder/issues')}
-                    text={tooltips.github}
-                    size='large'
-                    clean
-                  >
-                    <CodeBracketSquareIconOutline />
-                  </IconButtonWithToolTip>
                   <IconButtonWithToolTip
                     label={tooltips.theme}
                     text={tooltips.theme}

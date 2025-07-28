@@ -21,7 +21,6 @@ import ChatModeToggle from '../ChatBot/ChatModeToggle';
 import { RiChatSettingsLine } from 'react-icons/ri';
 import { IconButtonWithToolTip } from '../UI/IconButtonToolTip';
 import GCSButton from '../DataSources/GCS/GCSButton';
-import S3Component from '../DataSources/AWS/S3Bucket';
 import WebButton from '../DataSources/Web/WebButton';
 import DropZoneForSmallLayouts from '../DataSources/Local/DropZoneForSmallLayouts';
 import { useCredentials } from '../../context/UserCredentials';
@@ -38,7 +37,6 @@ const SideNav: React.FC<SideNavProps> = ({
   clearHistoryData,
   toggleGCSModal,
   toggleGenericModal,
-  toggles3Modal,
   setIsleftExpanded,
 }) => {
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
@@ -107,22 +105,7 @@ const SideNav: React.FC<SideNavProps> = ({
         );
       }
 
-      if (APP_SOURCES.includes('s3') && position === 'left') {
-        dataSourceItems.push(
-          <SideNavigation.Item
-            key='s3'
-            icon={
-              <TooltipWrapper tooltip='S3 Files' placement='right'>
-                <S3Component
-                  isLargeDesktop={false}
-                  openModal={toggles3Modal}
-                  isDisabled={!connectionStatus}
-                ></S3Component>
-              </TooltipWrapper>
-            }
-          />
-        );
-      }
+
 
       if (APP_SOURCES.includes('web') && position === 'left') {
         dataSourceItems.push(
