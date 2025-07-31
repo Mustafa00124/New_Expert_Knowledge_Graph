@@ -13,7 +13,7 @@ from langchain_aws import ChatBedrock
 from langchain_community.chat_models import ChatOllama
 import boto3
 import google.auth
-from src.shared.constants import ADDITIONAL_INSTRUCTIONS
+from src.shared.constants import ADDITIONAL_INSTRUCTIONS, CURRENT_SYSTEM_PROMPT
 from src.shared.llm_graph_builder_exception import LLMGraphBuilderException
 import re
 from typing import List

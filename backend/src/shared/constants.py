@@ -1,3 +1,6 @@
+import os
+import json
+
 OPENAI_MODELS = ["openai-gpt-3.5", "openai-gpt-4o", "openai-gpt-4o-mini"]
 GEMINI_MODELS = ["gemini-1.0-pro", "gemini-1.5-pro", "gemini-1.5-flash"]
 GROQ_MODELS = ["groq-llama3"]
@@ -908,3 +911,66 @@ RETURN
       end_node_element_id: elementId(endNode(r))
   }] AS relationships;
 """
+
+# System prompt for entity extraction and knowledge graph building
+SYSTEM_PROMPT = """
+You are an expert in knowledge graph construction and entity extraction. Your task is to analyze text and extract meaningful entities and relationships to build a comprehensive knowledge graph.
+
+Key Guidelines:
+1. Extract high-level domain concepts and experts that reflect the main themes
+2. Avoid overly specific, generic, or off-topic named entities
+3. Focus on entities that contribute to understanding the document's core message
+4. Create relationships that show meaningful connections between entities
+5. Ensure entities are one-word encapsulations of key concepts when possible
+
+Entity Types to Focus On:
+- Domain concepts (e.g., "Deterrence", "Entropy", "Sustainability")
+- Experts and key figures (e.g., "Einstein", "Kant", "Darwin")
+- Organizations and institutions
+- Core themes and topics
+
+Relationship Guidelines:
+- Use clear, descriptive relationship types
+- Ensure relationships are semantically meaningful
+- Connect entities that have logical associations
+- Avoid creating relationships between unrelated entities
+
+Additional Instructions:
+- Treat dates, numbers, revenues, and other non-entity information as properties rather than separate nodes
+- Focus on quality over quantity - fewer, well-chosen entities are better than many irrelevant ones
+- Consider the context and domain of the document when extracting entities
+"""
+
+SYSTEM_PROMPT_FILE = os.path.join(os.path.dirname(__file__), 'system_prompt.json')
+
+def load_system_prompt():
+    """Load system prompt from file, fallback to default if file doesn't exist"""
+    try:
+        if os.path.exists(SYSTEM_PROMPT_FILE):
+            with open(SYSTEM_PROMPT_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get('system_prompt', SYSTEM_PROMPT)
+    except Exception as e:
+        print(f"Error loading system prompt: {e}")
+    return SYSTEM_PROMPT
+
+def save_system_prompt(prompt: str):
+    """Save system prompt to file"""
+    try:
+        with open(SYSTEM_PROMPT_FILE, 'w', encoding='utf-8') as f:
+            json.dump({'system_prompt': prompt}, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print(f"Error saving system prompt: {e}")
+        return False
+
+# Load the current system prompt
+CURRENT_SYSTEM_PROMPT = load_system_prompt()
+
+def update_current_system_prompt(prompt: str):
+    """Update the current system prompt and save it to file"""
+    global CURRENT_SYSTEM_PROMPT
+    if save_system_prompt(prompt):
+        CURRENT_SYSTEM_PROMPT = prompt
+        return True
+    return False

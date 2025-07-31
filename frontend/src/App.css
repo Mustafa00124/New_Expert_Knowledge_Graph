@@ -368,6 +368,50 @@
   z-index: 39 !important;
 }
 
+/* System Prompt Editor Modal Styles */
+#system-prompt-editor-modal {
+  max-height: 90vh !important;
+  max-width: 90vw !important;
+}
+
+#system-prompt-editor-modal .ndl-dialog-content {
+  flex: 1 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+}
+
+#system-prompt-editor-modal .ndl-textarea {
+  flex: 1 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#system-prompt-editor-modal .ndl-textarea textarea {
+  flex: 1 !important;
+  min-height: 60vh !important;
+  height: 100% !important;
+  resize: none !important;
+  pointer-events: auto !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+#system-prompt-editor-modal .ndl-textarea textarea:focus {
+  outline: none !important;
+  border-color: var(--theme-palette-primary-border-strong) !important;
+}
+
+#system-prompt-editor-modal .ndl-textarea textarea:disabled {
+  pointer-events: none !important;
+  opacity: 0.6 !important;
+}
+
 .tbody-dark .ndl-data-grid-tr:hover {
   --cell-background: rgb(60 63 68) !important;
 }

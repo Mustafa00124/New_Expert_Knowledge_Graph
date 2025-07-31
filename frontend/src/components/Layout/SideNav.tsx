@@ -133,6 +133,7 @@ const SideNav: React.FC<SideNavProps> = ({
         <SideNavigation.List>
           {isExpanded && isLargeDesktop && (
             <SideNavigation.Item
+              key="expand-collapse"
               htmlAttributes={{ onClick: handleClick }}
               icon={
                 position === 'left' ? (
@@ -145,6 +146,7 @@ const SideNav: React.FC<SideNavProps> = ({
           )}
           {!isExpanded && position === 'left' && isLargeDesktop && (
             <SideNavigation.Item
+              key="sources"
               htmlAttributes={{ onClick: handleClick }}
               icon={
                 <TooltipWrapper tooltip={tooltips.sources} placement='right'>
@@ -157,6 +159,7 @@ const SideNav: React.FC<SideNavProps> = ({
           {position === 'right' && !isExpanded && (
             <SpotlightTarget id='chatbtn' indicatorVariant='point' indicatorPlacement='middle-left'>
               <SideNavigation.Item
+                key="chat"
                 htmlAttributes={{ onClick: handleClick }}
                 icon={
                   <TooltipWrapper tooltip={tooltips.chat} placement='left'>
@@ -171,6 +174,7 @@ const SideNav: React.FC<SideNavProps> = ({
             <>
               <Tooltip type='simple' placement={'left'}>
                 <SideNavigation.Item
+                  key="delete"
                   htmlAttributes={{ onClick: deleteOnClick }}
                   icon={
                     <>
@@ -184,6 +188,7 @@ const SideNav: React.FC<SideNavProps> = ({
               </Tooltip>
               <Tooltip type='simple' placement={'left'}>
                 <SideNavigation.Item
+                  key="expand"
                   htmlAttributes={{ onClick: handleExpandClick }}
                   icon={
                     <>
@@ -197,6 +202,7 @@ const SideNav: React.FC<SideNavProps> = ({
               </Tooltip>
               <Tooltip type='simple' placement={'left'}>
                 <SideNavigation.Item
+                  key="download"
                   htmlAttributes={{
                     onClick: () => {
                       downloadClickHandler(
@@ -223,6 +229,7 @@ const SideNav: React.FC<SideNavProps> = ({
               </Tooltip>
               {!isChatModalOpen && (
                 <SideNavigation.Item
+                  key="chat-mode"
                   ref={anchorMenuRef}
                   icon={
                     <>
