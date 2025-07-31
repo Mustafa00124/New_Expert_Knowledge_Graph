@@ -49,6 +49,15 @@ from src.shared.constants import (BUCKET_UPLOAD,BUCKET_FAILED_FILE, PROJECT_ID, 
                                   DELETE_ENTITIES_AND_START_FROM_BEGINNING,
                                   QUERY_TO_GET_NODES_AND_RELATIONS_OF_A_DOCUMENT,
                                   CURRENT_SYSTEM_PROMPT, update_current_system_prompt)
+from src.shared.constants import (BUCKET_UPLOAD,BUCKET_FAILED_FILE, PROJECT_ID, QUERY_TO_GET_CHUNKS, 
+                                  QUERY_TO_DELETE_EXISTING_ENTITIES, 
+                                  QUERY_TO_GET_LAST_PROCESSED_CHUNK_POSITION,
+                                  QUERY_TO_GET_LAST_PROCESSED_CHUNK_WITHOUT_ENTITY,
+                                  START_FROM_BEGINNING,
+                                  START_FROM_LAST_PROCESSED_POSITION,
+                                  DELETE_ENTITIES_AND_START_FROM_BEGINNING,
+                                  QUERY_TO_GET_NODES_AND_RELATIONS_OF_A_DOCUMENT,
+                                  CURRENT_SYSTEM_PROMPT, update_current_system_prompt)
 
 
 logger = CustomLogger()
@@ -1168,6 +1177,26 @@ async def get_schema_visualization(uri=Form(None), userName=Form(None), password
     finally:
         gc.collect()
 
+@app.get("/system_prompt")
+async def get_system_prompt():
+    """Get the current system prompt"""
+    try:
+        return create_api_response("Success", message="System prompt retrieved successfully", data={"system_prompt": CURRENT_SYSTEM_PROMPT})
+    except Exception as e:
+        logger.error(f"Error getting system prompt: {str(e)}")
+        return create_api_response("Failed", message=f"Error getting system prompt: {str(e)}", error=str(e))
+
+@app.post("/update_system_prompt")
+async def update_system_prompt(system_prompt=Form()):
+    """Update the system prompt"""
+    try:
+        if update_current_system_prompt(system_prompt):
+            return create_api_response("Success", message="System prompt updated successfully", data={"system_prompt": system_prompt})
+        else:
+            return create_api_response("Failed", message="Failed to save system prompt", error="Failed to save system prompt")
+    except Exception as e:
+        logger.error(f"Error updating system prompt: {str(e)}")
+        return create_api_response("Failed", message=f"Error updating system prompt: {str(e)}", error=str(e))
 
 
 if __name__ == "__main__":
