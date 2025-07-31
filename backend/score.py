@@ -1168,26 +1168,6 @@ async def get_schema_visualization(uri=Form(None), userName=Form(None), password
     finally:
         gc.collect()
 
-@app.get("/system_prompt")
-async def get_system_prompt():
-    """Get the current system prompt"""
-    try:
-        return create_api_response("Success", message="System prompt retrieved successfully", data={"system_prompt": CURRENT_SYSTEM_PROMPT})
-    except Exception as e:
-        logger.error(f"Error getting system prompt: {str(e)}")
-        return create_api_response("Failed", message=f"Error getting system prompt: {str(e)}", error=str(e))
-
-@app.post("/update_system_prompt")
-async def update_system_prompt(system_prompt=Form()):
-    """Update the system prompt"""
-    try:
-        if update_current_system_prompt(system_prompt):
-            return create_api_response("Success", message="System prompt updated successfully", data={"system_prompt": system_prompt})
-        else:
-            return create_api_response("Failed", message="Failed to save system prompt", error="Failed to save system prompt")
-    except Exception as e:
-        logger.error(f"Error updating system prompt: {str(e)}")
-        return create_api_response("Failed", message=f"Error updating system prompt: {str(e)}", error=str(e))
 
 
 if __name__ == "__main__":

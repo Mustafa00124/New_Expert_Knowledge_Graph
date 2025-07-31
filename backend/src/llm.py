@@ -212,7 +212,7 @@ async def get_graph_document_list(
             allowed_nodes=allowedNodes,
             allowed_relationships=allowedRelationship,
             ignore_tool_usage=ignore_tool_usage,
-            additional_instructions=ADDITIONAL_INSTRUCTIONS+ (additional_instructions if additional_instructions else "")
+            additional_instructions=CURRENT_SYSTEM_PROMPT + (additional_instructions if additional_instructions else "")
         )
     
     if isinstance(llm,DiffbotGraphTransformer):
