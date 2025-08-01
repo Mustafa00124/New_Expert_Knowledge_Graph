@@ -156,11 +156,17 @@ def get_sources_and_chunks(sources_used, docs):
     }
     return result
 
-def get_rag_chain(llm, system_template=CHAT_SYSTEM_TEMPLATE):
+def get_rag_chain(llm, system_prompt=None):
     try:
+        # Use provided system_prompt or fallback to default
+        logging.info(f"[get_rag_chain] system_prompt: {system_prompt[:100]}")
+        if system_prompt is None:
+            from src.shared.constants import CHAT_SYSTEM_TEMPLATE
+            system_prompt = CHAT_SYSTEM_TEMPLATE
+            
         question_answering_prompt = ChatPromptTemplate.from_messages(
             [
-                ("system", system_template),
+                ("system", system_prompt),
                 MessagesPlaceholder(variable_name="messages"),
                 (
                     "human",
@@ -225,13 +231,13 @@ def format_documents(documents, model,chat_mode_settings):
     
     return "\n\n".join(formatted_docs), sources,entities,global_communities
 
-def process_documents(docs, question, messages, llm, model,chat_mode_settings):
+def process_documents(docs, question, messages, llm, model, chat_mode_settings, system_prompt=None):
     start_time = time.time()
     
     try:
         formatted_docs, sources, entitydetails, communities = format_documents(docs, model,chat_mode_settings)
         
-        rag_chain = get_rag_chain(llm=llm)
+        rag_chain = get_rag_chain(llm=llm, system_prompt=system_prompt)
         
         ai_response = rag_chain.invoke({
             "messages": messages[:-1],
@@ -431,14 +437,14 @@ def setup_chat(model, graph, document_names, chat_mode_settings):
     
     return llm, doc_retriever, model_name
 
-def process_chat_response(messages, history, question, model, graph, document_names, chat_mode_settings):
+def process_chat_response(messages, history, question, model, graph, document_names, chat_mode_settings, system_prompt=None):
     try:
         llm, doc_retriever, model_version = setup_chat(model, graph, document_names, chat_mode_settings)
         
         docs,transformed_question = retrieve_documents(doc_retriever, messages)  
 
         if docs:
-            content, result, total_tokens,formatted_docs = process_documents(docs, question, messages, llm, model, chat_mode_settings)
+            content, result, total_tokens,formatted_docs = process_documents(docs, question, messages, llm, model, chat_mode_settings, system_prompt)
         else:
             content = "I couldn't find any relevant documents to answer your question."
             result = {"sources": list(), "nodedetails": list(), "entities": list()}
@@ -655,6 +661,10 @@ def get_chat_mode_settings(mode,settings_map=CHAT_MODE_CONFIG_MAP):
     
 def QA_RAG(graph,model, question, document_names, session_id, mode, write_access=True):
     logging.info(f"Chat Mode: {mode}")
+    logging.info(f"Current System Prompt: {current_system_prompt}")
+
+    # Load the current system prompt dynamically
+    current_system_prompt = load_system_prompt()
 
     history = create_neo4j_chat_message_history(graph, session_id, write_access)
     messages = history.messages
@@ -684,7 +694,7 @@ def QA_RAG(graph,model, question, document_names, session_id, mode, write_access
                 "user": "chatbot"
             }
         else:
-            result = process_chat_response(messages,history, question, model, graph, document_names,chat_mode_settings)
+            result = process_chat_response(messages,history, question, model, graph, document_names,chat_mode_settings, current_system_prompt)
 
     result["session_id"] = session_id
     

@@ -1045,7 +1045,7 @@ const Content: React.FC<ContentProps> = ({
                 {selectedfileslength && !disableCheck && newFilecheck ? `(${newFilecheck})` : ''}
               </ButtonWithToolTip>
             </SpotlightTarget>
-            <ButtonWithToolTip
+            {/* <ButtonWithToolTip
               text={tooltips.systemPrompt}
               placement='top'
               label='edit system prompt'
@@ -1054,7 +1054,7 @@ const Content: React.FC<ContentProps> = ({
               size={isTablet ? 'small' : 'medium'}
             >
               System Prompt
-            </ButtonWithToolTip>
+            </ButtonWithToolTip> */}
             <ButtonWithToolTip
               text={tooltips.systemPrompt}
               placement='top'

@@ -1179,9 +1179,9 @@ async def get_schema_visualization(uri=Form(None), userName=Form(None), password
 
 @app.get("/system_prompt")
 async def get_system_prompt():
-    """Get the current system prompt"""
     try:
-        return create_api_response("Success", message="System prompt retrieved successfully", data={"system_prompt": CURRENT_SYSTEM_PROMPT})
+        prompt = load_system_prompt()  # Always read latest value from file
+        return create_api_response("Success", message="System prompt retrieved successfully", data={"system_prompt": prompt})
     except Exception as e:
         logger.error(f"Error getting system prompt: {str(e)}")
         return create_api_response("Failed", message=f"Error getting system prompt: {str(e)}", error=str(e))
