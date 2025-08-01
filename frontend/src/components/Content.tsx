@@ -36,6 +36,7 @@ import GraphViewModal from './Graph/GraphViewModal';
 import { lazy } from 'react';
 import FallBackDialog from './UI/FallBackDialog';
 import DeletePopUp from './Popups/DeletePopUp/DeletePopUp';
+import SystemPromptEditor from './Popups/SystemPromptEditor';
 // import GraphEnhancementDialog from './Popups/GraphEnhancementDialog';
 import { tokens } from '@neo4j-ndl/base';
 import axios from 'axios';
@@ -63,12 +64,12 @@ const Content: React.FC<ContentProps> = ({
   setOpenConnection,
   showDisconnectButton,
   connectionStatus,
-  combinedPatterns,
-  setCombinedPatterns,
-  combinedNodes,
-  setCombinedNodes,
-  combinedRels,
-  setCombinedRels,
+  _combinedPatterns,
+  _setCombinedPatterns,
+  _combinedNodes,
+  _setCombinedNodes,
+  _combinedRels,
+  _setCombinedRels,
 }) => {
   const { breakpoints } = tokens;
   const isTablet = useMediaQuery(`(min-width:${breakpoints.xs}) and (max-width: ${breakpoints.lg})`);
@@ -89,6 +90,7 @@ const Content: React.FC<ContentProps> = ({
   const [totalPageCount, setTotalPageCount] = useState<number | null>(null);
   const [textChunks, setTextChunks] = useState<chunkdata[]>([]);
   const [isGraphBtnMenuOpen, setIsGraphBtnMenuOpen] = useState<boolean>(false);
+  const [showSystemPromptEditor, setShowSystemPromptEditor] = useState<boolean>(false);
   const graphbtnRef = useRef<HTMLDivElement>(null);
   const chunksTextAbortController = useRef<AbortController>();
   const { colorMode } = useContext(ThemeWrapperContext);
@@ -374,18 +376,18 @@ const Content: React.FC<ContentProps> = ({
               })
             );
           } else {
-            console.error('Unexpected error format:', error);
+            // console.error('Unexpected error format:', error);
           }
         } catch (parseError) {
           if (axios.isAxiosError(err)) {
             const axiosErrorMessage = err.response?.data?.message || err.message;
-            console.error('Axios error occurred:', axiosErrorMessage);
+            // console.error('Axios error occurred:', axiosErrorMessage);
           } else {
-            console.error('An unexpected error occurred:', err.message);
+            // console.error('An unexpected error occurred:', err.message);
           }
         }
       } else {
-        console.error('An unknown error occurred:', err);
+        // console.error('An unknown error occurred:', err);
       }
     }
   };
@@ -613,7 +615,7 @@ const Content: React.FC<ContentProps> = ({
         modes: {
           'graph+vector+fulltext': {
             message:
-              ' Welcome to Patrick\'s Expert Knowledge Graph Chat. You can ask questions related to documents which have been completely processed.',
+              " Welcome to Patrick's Expert Knowledge Graph Chat. You can ask questions related to documents which have been completely processed.",
           },
         },
         user: 'chatbot',
@@ -742,7 +744,7 @@ const Content: React.FC<ContentProps> = ({
         const error = JSON.parse(err.message);
         const { message } = error;
         showErrorToast(message);
-        console.log(err);
+        // console.log(err);
       }
     }
     setShowDeletePopUp(false);
@@ -927,7 +929,7 @@ const Content: React.FC<ContentProps> = ({
           flexWrap='wrap'
         >
           <div className='connectionstatus__container'>
-                            <span className='h6 px-1'>Database connection {isReadOnlyUser ? '(Read only Mode)' : ''}</span>
+            <span className='h6 px-1'>Database connection {isReadOnlyUser ? '(Read only Mode)' : ''}</span>
             <Typography variant='body-medium'>
               <DatabaseStatusIcon
                 isConnected={connectionStatus}
@@ -1043,6 +1045,27 @@ const Content: React.FC<ContentProps> = ({
                 {selectedfileslength && !disableCheck && newFilecheck ? `(${newFilecheck})` : ''}
               </ButtonWithToolTip>
             </SpotlightTarget>
+            {/* <ButtonWithToolTip
+              text={tooltips.systemPrompt}
+              placement='top'
+              label='edit system prompt'
+              onClick={() => setShowSystemPromptEditor(true)}
+              className='mr-0.5'
+              size={isTablet ? 'small' : 'medium'}
+            >
+              System Prompt
+            </ButtonWithToolTip> */}
+            <ButtonWithToolTip
+              text={tooltips.systemPrompt}
+              placement='top'
+              label='edit system prompt'
+              onClick={() => setShowSystemPromptEditor(true)}
+              disabled={!connectionStatus}
+              className='mr-0.5'
+              size={isTablet ? 'small' : 'medium'}
+            >
+              System Prompt
+            </ButtonWithToolTip>
             <ButtonWithToolTip
               text={
                 !selectedfileslength ? tooltips.deleteFile : `${selectedfileslength} ${tooltips.deleteSelectedFiles}`
@@ -1110,6 +1133,8 @@ const Content: React.FC<ContentProps> = ({
           </Flex>
         </Flex>
       </div>
+
+      <SystemPromptEditor open={showSystemPromptEditor} onClose={() => setShowSystemPromptEditor(false)} />
     </>
   );
 };

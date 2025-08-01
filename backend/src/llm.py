@@ -13,7 +13,7 @@ from langchain_aws import ChatBedrock
 from langchain_community.chat_models import ChatOllama
 import boto3
 import google.auth
-from src.shared.constants import ADDITIONAL_INSTRUCTIONS
+from src.shared.constants import ADDITIONAL_INSTRUCTIONS, CURRENT_SYSTEM_PROMPT
 from src.shared.llm_graph_builder_exception import LLMGraphBuilderException
 import re
 from typing import List
@@ -212,7 +212,7 @@ async def get_graph_document_list(
             allowed_nodes=allowedNodes,
             allowed_relationships=allowedRelationship,
             ignore_tool_usage=ignore_tool_usage,
-            additional_instructions=ADDITIONAL_INSTRUCTIONS+ (additional_instructions if additional_instructions else "")
+            additional_instructions=CURRENT_SYSTEM_PROMPT + (additional_instructions if additional_instructions else "")
         )
     
     if isinstance(llm,DiffbotGraphTransformer):

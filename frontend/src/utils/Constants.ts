@@ -186,6 +186,7 @@ export const tooltips = {
   additionalInstructions: 'Analyze instructions for schema',
   predinedSchema: 'Predefined Schema',
   dataImporterJson: 'Data Importer JSON',
+  systemPrompt: 'Edit system prompt for entity extraction and knowledge graph construction',
 };
 export const PRODMODLES = ['openai_gpt_4o', 'openai_gpt_4o_mini', 'diffbot', 'gemini_1.5_flash'];
 export const buttonCaptions = {
