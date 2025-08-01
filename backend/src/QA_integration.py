@@ -661,10 +661,10 @@ def get_chat_mode_settings(mode,settings_map=CHAT_MODE_CONFIG_MAP):
     
 def QA_RAG(graph,model, question, document_names, session_id, mode, write_access=True):
     logging.info(f"Chat Mode: {mode}")
-    logging.info(f"Current System Prompt: {current_system_prompt}")
-
+    
     # Load the current system prompt dynamically
     current_system_prompt = load_system_prompt()
+    logging.info(f"Current System Prompt: {current_system_prompt}")
 
     history = create_neo4j_chat_message_history(graph, session_id, write_access)
     messages = history.messages
