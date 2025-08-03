@@ -13,12 +13,23 @@ import re
 def get_youtube_transcript(youtube_id):
   try:
     proxy = os.environ.get("YOUTUBE_TRANSCRIPT_PROXY") 
-    proxy_config = GenericProxyConfig(http_url=proxy, https_url=proxy) if proxy else None
+    
+    # Only use proxy if it's properly configured and not a placeholder
+    proxy_config = None
+    if proxy and proxy != "https://user:pass@domain:port" and "user:pass@domain:port" not in proxy:
+      try:
+        proxy_config = GenericProxyConfig(http_url=proxy, https_url=proxy)
+        logging.info(f"Using YouTube transcript proxy: {proxy}")
+      except Exception as proxy_error:
+        logging.warning(f"Invalid proxy configuration, proceeding without proxy: {proxy_error}")
+        proxy_config = None
+    
     youtube_api = YouTubeTranscriptApi(proxy_config=proxy_config)
     transcript_pieces = youtube_api.fetch(youtube_id, preserve_formatting=True)
     transcript_pieces = transcript_pieces.to_raw_data()
     return transcript_pieces
   except Exception as e:
+    logging.error(f"Failed to fetch YouTube transcript for {youtube_id}: {str(e)}")
     message = f"Youtube transcript is not available for youtube Id: {youtube_id}"
     raise LLMGraphBuilderException(message)
   
