@@ -205,6 +205,8 @@ async def get_graph_document_list(
         model_name = get_llm_model_name(llm)
         ignore_tool_usage = not any(pattern in model_name for pattern in TOOL_SUPPORTED_MODELS)
         logging.info(f"Keeping ignore tool usage parameter as {ignore_tool_usage}")
+        # Sanitize the system prompt to remove any template variables that might cause issues
+        sanitized_system_prompt = sanitize_additional_instruction(CURRENT_SYSTEM_PROMPT)
         llm_transformer = LLMGraphTransformer(
             llm=llm,
             node_properties=node_properties,
@@ -212,7 +214,7 @@ async def get_graph_document_list(
             allowed_nodes=allowedNodes,
             allowed_relationships=allowedRelationship,
             ignore_tool_usage=ignore_tool_usage,
-            additional_instructions=CURRENT_SYSTEM_PROMPT + (additional_instructions if additional_instructions else "")
+            additional_instructions=sanitized_system_prompt + (additional_instructions if additional_instructions else "")
         )
     
     if isinstance(llm,DiffbotGraphTransformer):
