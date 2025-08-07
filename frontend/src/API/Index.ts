@@ -27,6 +27,9 @@ export const createDefaultFormData = (userCredentials: UserCredentials) => {
   if (userCredentials?.openaiApiKey) {
     formData.append('openaiApiKey', userCredentials?.openaiApiKey);
   }
+  if (userCredentials?.geminiApiKey) {
+    formData.append('geminiApiKey', userCredentials?.geminiApiKey);
+  }
   api.interceptors.request.use(
     (config) => {
       if (config.data instanceof FormData) {
