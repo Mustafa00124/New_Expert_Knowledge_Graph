@@ -54,6 +54,7 @@ export type UserCredentials = {
   email: string;
   connection?: string;
   openaiApiKey?: string;
+  geminiApiKey?: string;
 } & { [key: string]: any };
 
 export interface SourceNode extends Omit<CustomFileBase, 'relationshipsCount' | 'createdAt'> {

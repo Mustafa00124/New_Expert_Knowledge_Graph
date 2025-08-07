@@ -608,7 +608,7 @@ async def clear_chat_bot(uri=Form(None),userName=Form(None), password=Form(None)
         gc.collect()
             
 @app.post("/connect")
-async def connect(uri=Form(None), userName=Form(None), password=Form(None), database=Form(None), email=Form(None), openaiApiKey=Form(None)):
+async def connect(uri=Form(None), userName=Form(None), password=Form(None), database=Form(None), email=Form(None), openaiApiKey=Form(None), geminiApiKey=Form(None)):
     try:
         start = time.time()
         
@@ -627,6 +627,17 @@ async def connect(uri=Form(None), userName=Form(None), password=Form(None), data
             # Set embedding model to OpenAI
             os.environ['EMBEDDING_MODEL'] = 'openai'
             logging.info("OpenAI API key and model configurations set successfully")
+        
+        # Store Gemini API key globally for use in other endpoints
+        if geminiApiKey:
+            # Set environment variables for current process
+            os.environ['GEMINI_API_KEY'] = geminiApiKey
+            # Set LLM model configurations for Gemini models
+            os.environ['LLM_MODEL_CONFIG_gemini_1.5_pro'] = f"gemini-1.5-pro-002"
+            os.environ['LLM_MODEL_CONFIG_gemini_1.5_flash'] = f"gemini-1.5-flash-002"
+            os.environ['LLM_MODEL_CONFIG_gemini_2.0_flash'] = f"gemini-2.0-flash-001"
+            os.environ['LLM_MODEL_CONFIG_gemini_2.5_pro'] = f"gemini-2.5-pro"
+            logging.info("Gemini API key and model configurations set successfully")
         
         graph = create_graph_database_connection(uri, userName, password, database)
         result = await asyncio.to_thread(connection_check_and_get_vector_dimensions, graph, database)

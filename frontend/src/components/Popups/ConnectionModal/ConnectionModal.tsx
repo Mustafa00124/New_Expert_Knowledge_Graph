@@ -28,6 +28,7 @@ export default function ConnectionModal({
   let initialprotocol;
   let initialuserdbvectorindex;
   let initialOpenAIKey;
+  let initialGeminiKey;
   if (prefilledconnection) {
     let parsedcontent = JSON.parse(prefilledconnection);
     initialuserdbvectorindex = parsedcontent.userDbVectorIndex;
@@ -38,6 +39,7 @@ export default function ConnectionModal({
     initialport = initialuri.split(':')[1];
     initialprotocol = urisplit[0];
     initialOpenAIKey = parsedcontent?.openaiApiKey;
+    initialGeminiKey = parsedcontent?.geminiApiKey;
   }
   const protocols = ['neo4j', 'neo4j+s', 'neo4j+ssc', 'bolt', 'bolt+s', 'bolt+ssc'];
   const [protocol, setProtocol] = useState<string>(initialprotocol ?? 'neo4j+s');
@@ -47,6 +49,7 @@ export default function ConnectionModal({
   const [username, setUsername] = useState<string>(initialusername ?? 'neo4j');
   const [password, setPassword] = useState<string>('');
   const [openaiApiKey, setOpenaiApiKey] = useState<string>(initialOpenAIKey ?? '');
+  const [geminiApiKey, setGeminiApiKey] = useState<string>(initialGeminiKey ?? '');
   const [connectionMessage, setMessage] = useState<Message | null>({ type: 'unknown', content: '' });
   const { user } = useAuth0();
   const {
@@ -70,6 +73,7 @@ export default function ConnectionModal({
   const userNameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const openaiKeyRef = useRef<HTMLInputElement>(null);
+  const geminiKeyRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (searchParams.has('connectURL')) {
       const url = searchParams.get('connectURL');
@@ -195,6 +199,7 @@ export default function ConnectionModal({
       port: port,
       email,
       openaiApiKey,
+      geminiApiKey,
     };
     setUserCredentials(credential);
     createDefaultFormData(credential);
@@ -242,6 +247,7 @@ export default function ConnectionModal({
             email: user?.email ?? '',
             connection: 'connectAPI',
             openaiApiKey,
+            geminiApiKey,
           })
         );
         setUserDbVectorIndex(response.data.data.db_vector_dimension);
@@ -328,7 +334,10 @@ export default function ConnectionModal({
       }
     };
 
-  const isDisabled = useMemo(() => !username || !URI || !password || !openaiApiKey, [username, URI, password, openaiApiKey]);
+  const isDisabled = useMemo(
+    () => !username || !URI || !password || !openaiApiKey || !geminiApiKey,
+    [username, URI, password, openaiApiKey, geminiApiKey]
+  );
 
   return (
     <>
@@ -346,11 +355,6 @@ export default function ConnectionModal({
       >
         <Dialog.Header htmlAttributes={{ id: 'form-dialog-title' }}>Connect to Database</Dialog.Header>
         <Dialog.Content className='n-flex n-flex-col n-gap-token-4'>
-          <Typography variant='body-medium' className='mb-4'>
-            <TextLink type='external' href='https://console.neo4j.io/'>
-              Don't have a database instance? Start for free today
-            </TextLink>
-          </Typography>
           {connectionMessage?.type !== 'unknown' &&
             (vectorIndexLoading ? (
               <Banner
@@ -370,7 +374,7 @@ export default function ConnectionModal({
                 usage='inline'
               ></Banner>
             ))}
-          
+
           {/* OpenAI API Key Section */}
           <div className='n-flex n-flex-col n-gap-token-2'>
             <Typography variant='body-medium' className='font-semibold'>
@@ -380,7 +384,7 @@ export default function ConnectionModal({
               ref={openaiKeyRef}
               htmlAttributes={{
                 id: 'openai-api-key',
-                onKeyDown: handleKeyPress(user?.email ?? ''),
+                onKeyDown: (e) => handleKeyPress(user?.email ?? '')(e, geminiKeyRef),
                 type: 'password',
                 'aria-label': 'OpenAI API Key',
                 placeholder: 'sk-...',
@@ -392,6 +396,31 @@ export default function ConnectionModal({
               isFluid={true}
               isRequired={true}
               onChange={(e) => setOpenaiApiKey(e.target.value)}
+              className='w-full'
+            />
+          </div>
+
+          {/* Gemini API Key Section */}
+          <div className='n-flex n-flex-col n-gap-token-2'>
+            <Typography variant='body-medium' className='font-semibold'>
+              Gemini Configuration
+            </Typography>
+            <TextInput
+              ref={geminiKeyRef}
+              htmlAttributes={{
+                id: 'gemini-api-key',
+                onKeyDown: (e) => handleKeyPress(user?.email ?? '')(e, databaseRef),
+                type: 'password',
+                'aria-label': 'Gemini API Key',
+                placeholder: 'AIza...',
+                autoComplete: 'off',
+              }}
+              value={geminiApiKey}
+              isDisabled={false}
+              label='Gemini API Key'
+              isFluid={true}
+              isRequired={true}
+              onChange={(e) => setGeminiApiKey(e.target.value)}
               className='w-full'
             />
           </div>
