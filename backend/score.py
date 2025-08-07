@@ -10,7 +10,7 @@ import uvicorn
 import asyncio
 import base64
 from langserve import add_routes
-from langchain_google_vertexai import ChatVertexAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from src.api_response import create_api_response
 from src.graphDB_dataAccess import graphDBdataAccess
 from src.graph_query import get_graph_results,get_chunktext_results,visualize_schema
@@ -154,7 +154,9 @@ app.add_middleware(SessionMiddleware, secret_key=os.urandom(24))
 
 is_gemini_enabled = os.environ.get("GEMINI_ENABLED", "False").lower() in ("true", "1", "yes")
 if is_gemini_enabled:
-    add_routes(app,ChatVertexAI(), path="/vertexai")
+    gemini_api_key = os.environ.get('GEMINI_API_KEY')
+    if gemini_api_key:
+        add_routes(app, ChatGoogleGenerativeAI(model="gemini-2.0-flash-001", google_api_key=gemini_api_key), path="/vertexai")
 
 app.add_api_route("/health", health([healthy_condition, healthy]))
 
