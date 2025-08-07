@@ -246,27 +246,51 @@ async def get_graph_document_list(
     if "diffbot_api_key" in dir(llm):
         llm_transformer = llm
     else:
-        if "get_name" in dir(llm) and llm.get_name() != "ChatOpenAI" and llm.get_name() != "GeminiWrapper" and llm.get_name() != "AzureChatOpenAI":
-            node_properties = False
-            relationship_properties = False
-        else:
+        # Check if the model supports native function calling
+        model_name = get_llm_model_name(llm)
+        
+        # Define models that are known to support native function calling
+        # These models have been tested and confirmed to work with node_properties and relationship_properties
+        NATIVE_FUNCTION_CALLING_MODELS = {
+            "qwen3", "deepseek", "gpt-4", "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo",
+            "claude-3", "claude-3.5", "claude-3.5-sonnet", "claude-3.5-haiku",
+            "gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"
+        }
+        
+        # Determine if the model supports native function calling
+        supports_native_function_calling = any(pattern.lower() in model_name.lower() for pattern in NATIVE_FUNCTION_CALLING_MODELS)
+        
+        # Only use node_properties and relationship_properties if the model supports native function calling
+        if supports_native_function_calling:
             node_properties = ["description"]
             relationship_properties = ["description"]
-        TOOL_SUPPORTED_MODELS = {"qwen3", "deepseek"} 
-        model_name = get_llm_model_name(llm)
-        ignore_tool_usage = not any(pattern in model_name for pattern in TOOL_SUPPORTED_MODELS)
+        else:
+            node_properties = None
+            relationship_properties = None
+        
+        ignore_tool_usage = not supports_native_function_calling
+        logging.info(f"Model {model_name} supports native function calling: {supports_native_function_calling}")
         logging.info(f"Keeping ignore tool usage parameter as {ignore_tool_usage}")
+        
         # Sanitize the system prompt to remove any template variables that might cause issues
         sanitized_system_prompt = sanitize_additional_instruction(CURRENT_SYSTEM_PROMPT)
-        llm_transformer = LLMGraphTransformer(
-            llm=llm,
-            node_properties=node_properties,
-            relationship_properties=relationship_properties,
-            allowed_nodes=allowedNodes,
-            allowed_relationships=allowedRelationship,
-            ignore_tool_usage=ignore_tool_usage,
-            additional_instructions=sanitized_system_prompt + (additional_instructions if additional_instructions else "")
-        )
+        
+        # Create LLMGraphTransformer with conditional parameters
+        transformer_kwargs = {
+            "llm": llm,
+            "allowed_nodes": allowedNodes,
+            "allowed_relationships": allowedRelationship,
+            "ignore_tool_usage": ignore_tool_usage,
+            "additional_instructions": sanitized_system_prompt + (additional_instructions if additional_instructions else "")
+        }
+        
+        # Only add node_properties and relationship_properties if they are not None
+        if node_properties is not None:
+            transformer_kwargs["node_properties"] = node_properties
+        if relationship_properties is not None:
+            transformer_kwargs["relationship_properties"] = relationship_properties
+        
+        llm_transformer = LLMGraphTransformer(**transformer_kwargs)
     
     if isinstance(llm,DiffbotGraphTransformer):
         graph_document_list = llm_transformer.convert_to_graph_documents(combined_chunk_document_list)
