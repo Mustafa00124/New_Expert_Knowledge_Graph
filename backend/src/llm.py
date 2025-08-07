@@ -2,9 +2,8 @@ import logging
 from langchain.docstore.document import Document
 import os
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
-from langchain_google_vertexai import ChatVertexAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
-from langchain_google_vertexai import HarmBlockThreshold, HarmCategory
 from langchain_experimental.graph_transformers.diffbot import DiffbotGraphTransformer
 from langchain_experimental.graph_transformers import LLMGraphTransformer
 from langchain_anthropic import ChatAnthropic
@@ -12,7 +11,6 @@ from langchain_fireworks import ChatFireworks
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models import ChatOllama
 import boto3
-import google.auth
 from src.shared.constants import ADDITIONAL_INSTRUCTIONS, CURRENT_SYSTEM_PROMPT
 from src.shared.llm_graph_builder_exception import LLMGraphBuilderException
 import re
@@ -45,20 +43,16 @@ def get_llm(model: str):
     try:
         if "gemini" in model:
             model_name = env_value
-            credentials, project_id = google.auth.default()
-            llm = ChatVertexAI(
-                model_name=model_name,
-                #convert_system_message_to_human=True,
-                credentials=credentials,
-                project=project_id,
+            # Get Gemini API key from environment
+            gemini_api_key = os.environ.get('GEMINI_API_KEY')
+            if not gemini_api_key:
+                raise Exception("GEMINI_API_KEY not found in environment variables")
+            
+            llm = ChatGoogleGenerativeAI(
+                model=model_name,
+                google_api_key=gemini_api_key,
                 temperature=0,
-                safety_settings={
-                    HarmCategory.HARM_CATEGORY_UNSPECIFIED: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                },
+                convert_system_message_to_human=True,
             )
         elif "openai" in model:
             model_name, api_key = env_value.split(",")
@@ -195,7 +189,7 @@ async def get_graph_document_list(
     if "diffbot_api_key" in dir(llm):
         llm_transformer = llm
     else:
-        if "get_name" in dir(llm) and llm.get_name() != "ChatOpenAI" or llm.get_name() != "ChatVertexAI" or llm.get_name() != "AzureChatOpenAI":
+        if "get_name" in dir(llm) and llm.get_name() != "ChatOpenAI" or llm.get_name() != "ChatGoogleGenerativeAI" or llm.get_name() != "AzureChatOpenAI":
             node_properties = False
             relationship_properties = False
         else:
