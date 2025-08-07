@@ -2,7 +2,7 @@ import logging
 from langchain.docstore.document import Document
 import os
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
+import google.generativeai as genai
 from langchain_groq import ChatGroq
 from langchain_experimental.graph_transformers.diffbot import DiffbotGraphTransformer
 from langchain_experimental.graph_transformers import LLMGraphTransformer
@@ -14,7 +14,65 @@ import boto3
 from src.shared.constants import ADDITIONAL_INSTRUCTIONS, CURRENT_SYSTEM_PROMPT
 from src.shared.llm_graph_builder_exception import LLMGraphBuilderException
 import re
-from typing import List
+from typing import List, Any, Dict, Optional
+from langchain_core.runnables import Runnable
+
+class GeminiWrapper(Runnable):
+    """Wrapper class for Google Generative AI to work with LangChain"""
+    def __init__(self, model: str, api_key: str, temperature: float = 0):
+        super().__init__()
+        self.model = model
+        self.api_key = api_key
+        self.temperature = temperature
+        genai.configure(api_key=api_key)
+        self.model_instance = genai.GenerativeModel(model)
+    
+    def invoke(self, input_data: Any, config: Optional[Dict[str, Any]] = None) -> Any:
+        """Convert LangChain format messages to Gemini format and invoke"""
+        # Handle different input formats
+        if isinstance(input_data, dict) and "messages" in input_data:
+            messages = input_data["messages"]
+        elif isinstance(input_data, list):
+            messages = input_data
+        else:
+            messages = [input_data]
+        
+        # Convert LangChain messages to Gemini format
+        gemini_messages = []
+        for message in messages:
+            if hasattr(message, 'content'):
+                content = message.content
+            else:
+                content = str(message)
+            
+            if hasattr(message, 'type') and message.type == 'human':
+                gemini_messages.append({"role": "user", "parts": [{"text": content}]})
+            elif hasattr(message, 'type') and message.type == 'ai':
+                gemini_messages.append({"role": "model", "parts": [{"text": content}]})
+            else:
+                gemini_messages.append({"role": "user", "parts": [{"text": content}]})
+        
+        # Generate response
+        response = self.model_instance.generate_content(gemini_messages)
+        return response.text
+    
+    async def ainvoke(self, input_data: Any, config: Optional[Dict[str, Any]] = None) -> Any:
+        """Async version of invoke"""
+        return self.invoke(input_data, config)
+    
+    def stream(self, input_data: Any, config: Optional[Dict[str, Any]] = None):
+        """Stream version of invoke"""
+        result = self.invoke(input_data, config)
+        yield result
+    
+    async def astream(self, input_data: Any, config: Optional[Dict[str, Any]] = None):
+        """Async stream version of invoke"""
+        result = await self.ainvoke(input_data, config)
+        yield result
+    
+    def get_name(self):
+        """Return model name for compatibility"""
+        return self.model
 
 def get_llm(model: str):
     """Retrieve the specified language model based on the model name."""
@@ -48,11 +106,10 @@ def get_llm(model: str):
             if not gemini_api_key:
                 raise Exception("GEMINI_API_KEY not found in environment variables")
             
-            llm = ChatGoogleGenerativeAI(
+            llm = GeminiWrapper(
                 model=model_name,
-                google_api_key=gemini_api_key,
-                temperature=0,
-                convert_system_message_to_human=True,
+                api_key=gemini_api_key,
+                temperature=0
             )
         elif "openai" in model:
             model_name, api_key = env_value.split(",")
@@ -189,7 +246,7 @@ async def get_graph_document_list(
     if "diffbot_api_key" in dir(llm):
         llm_transformer = llm
     else:
-        if "get_name" in dir(llm) and llm.get_name() != "ChatOpenAI" or llm.get_name() != "ChatGoogleGenerativeAI" or llm.get_name() != "AzureChatOpenAI":
+        if "get_name" in dir(llm) and llm.get_name() != "ChatOpenAI" and llm.get_name() != "GeminiWrapper" and llm.get_name() != "AzureChatOpenAI":
             node_properties = False
             relationship_properties = False
         else:

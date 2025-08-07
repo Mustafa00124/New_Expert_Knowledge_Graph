@@ -10,7 +10,7 @@ import uvicorn
 import asyncio
 import base64
 from langserve import add_routes
-from langchain_google_genai import ChatGoogleGenerativeAI
+import google.generativeai as genai
 from src.api_response import create_api_response
 from src.graphDB_dataAccess import graphDBdataAccess
 from src.graph_query import get_graph_results,get_chunktext_results,visualize_schema
@@ -20,7 +20,7 @@ from sse_starlette.sse import EventSourceResponse
 from src.communities import create_communities
 from src.neighbours import get_neighbour_nodes
 import json
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 from google.oauth2.credentials import Credentials
 import os
 from src.logger import CustomLogger
@@ -36,6 +36,8 @@ from langchain_neo4j import Neo4jGraph
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from dotenv import load_dotenv
+from langchain_core.runnables import Runnable
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 load_dotenv(override=True)
 
 # Import OpenAI config module
@@ -80,6 +82,59 @@ Relationships:
 - Link KeyTakeaways → HelpfulFor via `HAS_USE_CASE`
 - Link Chunks → Entities via `HAS_ENTITY`
 """
+
+class GeminiWrapper(Runnable):
+    """Wrapper class for Google Generative AI to work with LangServe"""
+    
+    def __init__(self, api_key: str, model: str = "gemini-2.0-flash-001"):
+        super().__init__()
+        self.api_key = api_key
+        self.model = model
+        genai.configure(api_key=api_key)
+        self.model_instance = genai.GenerativeModel(model)
+    
+    def invoke(self, input_data: Any, config: Optional[Dict[str, Any]] = None) -> Any:
+        """Convert LangChain format messages to Gemini format and invoke"""
+        # Handle different input formats
+        if isinstance(input_data, dict) and "messages" in input_data:
+            messages = input_data["messages"]
+        elif isinstance(input_data, list):
+            messages = input_data
+        else:
+            messages = [input_data]
+        
+        # Convert LangChain messages to Gemini format
+        gemini_messages = []
+        for message in messages:
+            if hasattr(message, 'content'):
+                content = message.content
+            else:
+                content = str(message)
+            
+            if hasattr(message, 'type') and message.type == 'human':
+                gemini_messages.append({"role": "user", "parts": [{"text": content}]})
+            elif hasattr(message, 'type') and message.type == 'ai':
+                gemini_messages.append({"role": "model", "parts": [{"text": content}]})
+            else:
+                gemini_messages.append({"role": "user", "parts": [{"text": content}]})
+        
+        # Generate response
+        response = self.model_instance.generate_content(gemini_messages)
+        return response.text
+    
+    async def ainvoke(self, input_data: Any, config: Optional[Dict[str, Any]] = None) -> Any:
+        """Async version of invoke"""
+        return self.invoke(input_data, config)
+    
+    def stream(self, input_data: Any, config: Optional[Dict[str, Any]] = None):
+        """Stream version of invoke"""
+        result = self.invoke(input_data, config)
+        yield result
+    
+    async def astream(self, input_data: Any, config: Optional[Dict[str, Any]] = None):
+        """Async stream version of invoke"""
+        result = await self.ainvoke(input_data, config)
+        yield result
 
 def sanitize_filename(filename):
    """
@@ -156,7 +211,7 @@ is_gemini_enabled = os.environ.get("GEMINI_ENABLED", "False").lower() in ("true"
 if is_gemini_enabled:
     gemini_api_key = os.environ.get('GEMINI_API_KEY')
     if gemini_api_key:
-        add_routes(app, ChatGoogleGenerativeAI(model="gemini-2.0-flash-001", google_api_key=gemini_api_key), path="/vertexai")
+        add_routes(app, GeminiWrapper(gemini_api_key), path="/vertexai")
 
 app.add_api_route("/health", health([healthy_condition, healthy]))
 
