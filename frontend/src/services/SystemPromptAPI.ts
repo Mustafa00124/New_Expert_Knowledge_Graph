@@ -49,11 +49,27 @@ export const setActiveSystemPromptSlot = async (slot: string): Promise<boolean> 
 
     const response = await api.post('/set_active_system_prompt_slot', formData);
     if (response.data.status === 'Success') {
+      // Refresh the cache after setting the active prompt
+      await refreshSystemPromptCache();
       return true;
     }
     throw new Error(response.data.message || 'Failed to set active prompt slot');
   } catch (error) {
     console.error('Error setting active prompt slot:', error);
+    throw error;
+  }
+};
+
+export const refreshSystemPromptCache = async (): Promise<boolean> => {
+  try {
+    const response = await api.post('/refresh_system_prompt_cache');
+    if (response.data.status === 'Success') {
+      console.log('System prompt cache refreshed successfully');
+      return true;
+    }
+    throw new Error(response.data.message || 'Failed to refresh system prompt cache');
+  } catch (error) {
+    console.error('Error refreshing system prompt cache:', error);
     throw error;
   }
 };

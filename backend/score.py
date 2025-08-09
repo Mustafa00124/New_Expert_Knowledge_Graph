@@ -49,8 +49,7 @@ from src.shared.constants import (BUCKET_UPLOAD,BUCKET_FAILED_FILE, PROJECT_ID, 
                                   START_FROM_BEGINNING,
                                   START_FROM_LAST_PROCESSED_POSITION,
                                   DELETE_ENTITIES_AND_START_FROM_BEGINNING,
-                                  QUERY_TO_GET_NODES_AND_RELATIONS_OF_A_DOCUMENT,
-                                  CURRENT_SYSTEM_PROMPT)
+                                  QUERY_TO_GET_NODES_AND_RELATIONS_OF_A_DOCUMENT)
 
 
 logger = CustomLogger()
@@ -1296,6 +1295,26 @@ def set_active_system_prompt_slot_endpoint(slot: str = Form(...)):
     except Exception as e:
         logging.error(f"Error setting active system prompt slot: {e}")
         return create_api_response("Failed", message="Error setting active prompt slot", error=str(e))
+
+@app.post("/refresh_system_prompt_cache")
+def refresh_system_prompt_cache_endpoint():
+    """Force refresh of system prompt cache - useful for debugging"""
+    try:
+        from src.shared.constants import get_current_system_prompt, get_active_prompt_slot
+        # This will force a fresh load of the system prompt
+        current_prompt = get_current_system_prompt()
+        active_slot = get_active_prompt_slot()
+        
+        return create_api_response("Success", 
+                                 message="System prompt cache refreshed", 
+                                 data={
+                                     "active_slot": active_slot,
+                                     "prompt_length": len(current_prompt) if current_prompt else 0,
+                                     "cache_refreshed": True
+                                 })
+    except Exception as e:
+        logging.error(f"Error refreshing system prompt cache: {e}")
+        return create_api_response("Failed", message="Error refreshing system prompt cache", error=str(e))
 
 
 if __name__ == "__main__":

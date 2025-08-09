@@ -11,7 +11,7 @@ from langchain_fireworks import ChatFireworks
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models import ChatOllama
 import boto3
-from src.shared.constants import ADDITIONAL_INSTRUCTIONS, CURRENT_SYSTEM_PROMPT
+from src.shared.constants import ADDITIONAL_INSTRUCTIONS, get_current_system_prompt
 from src.shared.llm_graph_builder_exception import LLMGraphBuilderException
 import re
 from typing import List, Any, Dict, Optional
@@ -273,7 +273,7 @@ async def get_graph_document_list(
         logging.info(f"Keeping ignore tool usage parameter as {ignore_tool_usage}")
         
         # Sanitize the system prompt to remove any template variables that might cause issues
-        sanitized_system_prompt = sanitize_additional_instruction(CURRENT_SYSTEM_PROMPT)
+        sanitized_system_prompt = sanitize_additional_instruction(get_current_system_prompt())
         
         # Create LLMGraphTransformer with conditional parameters
         transformer_kwargs = {
