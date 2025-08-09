@@ -1,28 +1,30 @@
 import api from '../API/Index';
 
-export const getSystemPrompt = async () => {
+// New functions for multiple prompt slots
+export const getSystemPromptSlot = async (slot: string) => {
   try {
-    const response = await api.get('/system_prompt');
-    console.log('System prompt:', response.data);
+    const response = await api.get(`/get_system_prompt_slot/${slot}`);
+    console.log(`System prompt ${slot}:`, response.data);
     return response.data;
   } catch (error) {
-    console.log('Error getting system prompt:', error);
+    console.log(`Error getting system prompt ${slot}:`, error);
     throw error;
   }
 };
 
-export const updateSystemPrompt = async (systemPrompt: string) => {
+export const updateSystemPromptSlot = async (slot: string, prompt: string) => {
   try {
     const formData = new FormData();
-    formData.append('system_prompt', systemPrompt);
-    const response = await api.post('/update_system_prompt', formData, {
+    formData.append('slot', slot);
+    formData.append('prompt', prompt);
+    const response = await api.post('/update_system_prompt_slot', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
     return response.data;
   } catch (error) {
-    console.log('Error updating system prompt:', error);
+    console.log(`Error updating system prompt ${slot}:`, error);
     throw error;
   }
-}; 
+};
