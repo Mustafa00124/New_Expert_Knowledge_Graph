@@ -164,10 +164,15 @@ def get_sources_and_chunks(sources_used, docs):
 def get_rag_chain(llm, system_prompt=None):
     try:
         # Use provided system_prompt or fallback to default
-        logging.info(f"[get_rag_chain] system_prompt: {system_prompt[:100]}")
         if system_prompt is None:
             from src.shared.constants import CHAT_SYSTEM_TEMPLATE
             system_prompt = CHAT_SYSTEM_TEMPLATE
+        
+        # Log the system prompt safely
+        if system_prompt and isinstance(system_prompt, str):
+            logging.info(f"[get_rag_chain] system_prompt: {system_prompt[:100]}")
+        else:
+            logging.info(f"[get_rag_chain] system_prompt: {type(system_prompt)} - {system_prompt}")
             
         question_answering_prompt = ChatPromptTemplate.from_messages(
             [
@@ -668,7 +673,7 @@ def QA_RAG(graph,model, question, document_names, session_id, mode, write_access
     logging.info(f"Chat Mode: {mode}")
     
     # Load the current system prompt dynamically
-    current_system_prompt = load_system_prompt()
+    current_system_prompt = get_current_system_prompt()
     logging.info(f"Current System Prompt: {current_system_prompt}")
 
     history = create_neo4j_chat_message_history(graph, session_id, write_access)
