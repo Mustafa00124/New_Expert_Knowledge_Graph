@@ -764,141 +764,54 @@ def encode_password(pwd):
     encoded_pwd_bytes = base64.b64encode(data_bytes)
     return encoded_pwd_bytes
 
-# @app.get("/update_extract_status/{file_name}")
-# async def update_extract_status(request: Request, file_name: str, uri:str=None, userName:str=None, password:str=None, database:str=None):
-#     async def generate():
-#         status = ''
-        
-#         if password is not None and password != "null":
-#             decoded_password = decode_password(password)
-#         else:
-#             decoded_password = None
-
-#         url = uri
-#         if url and " " in url:
-#             url= url.replace(" ","+")
-            
-#         graph = create_graph_database_connection(url, userName, decoded_password, database)
-#         graphDb_data_Access = graphDBdataAccess(graph)
-#         while True:
-#             try:
-#                 if await request.is_disconnected():
-#                     logging.info(" SSE Client disconnected")
-#                     break
-#                 # get the current status of document node
-                
-#                 else:
-#                     result = graphDb_data_Access.get_current_status_document_node(file_name)
-#                     if len(result) > 0:
-#                         status = json.dumps({'fileName':file_name, 
-#                         'status':result[0]['Status'],
-#                         'processingTime':result[0]['processingTime'],
-#                         'nodeCount':result[0]['nodeCount'],
-#                         'relationshipCount':result[0]['relationshipCount'],
-#                         'model':result[0]['model'],
-#                         'total_chunks':result[0]['total_chunks'],
-#                         'fileSize':result[0]['fileSize'],
-#                         'processed_chunk':result[0]['processed_chunk'],
-#                         'fileSource':result[0]['fileSource'],
-#                         'chunkNodeCount' : result[0]['chunkNodeCount'],
-#                         'chunkRelCount' : result[0]['chunkRelCount'],
-#                         'entityNodeCount' : result[0]['entityNodeCount'],
-#                         'entityEntityRelCount' : result[0]['entityEntityRelCount'],
-#                         'communityNodeCount' : result[0]['communityNodeCount'],
-#                         'communityRelCount' : result[0]['communityRelCount']
-#                         })
-#                     yield status
-#             except asyncio.CancelledError:
-#                 logging.info("SSE Connection cancelled")
-    
-#     return EventSourceResponse(generate(),ping=60)
-
-from urllib.parse import quote_plus
-import traceback
-
 @app.get("/update_extract_status/{file_name}")
-async def update_extract_status(
-    request: Request,
-    file_name: str,
-    uri: str = None,
-    userName: str = None,
-    password: str = None,
-    database: str = None
-):
+async def update_extract_status(request: Request, file_name: str, uri:str=None, userName:str=None, password:str=None, database:str=None):
     async def generate():
-        try:
-            # Decode password if provided
+        status = ''
+        
+        if password is not None and password != "null":
+            decoded_password = decode_password(password)
+        else:
             decoded_password = None
-            if password and password != "null":
-                try:
-                    decoded_password = decode_password(password)
-                except Exception:
-                    # If the frontend sent a plain password by mistake, fall back to raw
-                    decoded_password = password
 
-            # Clean URI safely
-            url = quote_plus(uri, safe=":/?&=+") if uri else None
-
-            graph = create_graph_database_connection(url, userName, decoded_password, database)
-            graphDb = graphDBdataAccess(graph)
-
-            # Send an initial event so client sees something immediately
-            yield {"event": "status", "data": json.dumps({"fileName": file_name, "status": "Starting"}, default=str)}
-
-            while True:
+        url = uri
+        if url and " " in url:
+            url= url.replace(" ","+")
+            
+        graph = create_graph_database_connection(url, userName, decoded_password, database)
+        graphDb_data_Access = graphDBdataAccess(graph)
+        while True:
+            try:
                 if await request.is_disconnected():
-                    logging.info("SSE client disconnected")
+                    logging.info(" SSE Client disconnected")
                     break
-
-                try:
-                    result = graphDb.get_current_status_document_node(file_name)
-
-                    if result:
-                        r0 = result[0]
-                        payload = {
-                            "fileName": file_name,
-                            "status": r0.get("Status"),
-                            "processingTime": r0.get("processingTime"),
-                            "nodeCount": r0.get("nodeCount"),
-                            "relationshipCount": r0.get("relationshipCount"),
-                            "model": r0.get("model"),
-                            "total_chunks": r0.get("total_chunks"),
-                            "fileSize": r0.get("fileSize"),
-                            "processed_chunk": r0.get("processed_chunk"),
-                            "fileSource": r0.get("fileSource"),
-                            "chunkNodeCount": r0.get("chunkNodeCount"),
-                            "chunkRelCount": r0.get("chunkRelCount"),
-                            "entityNodeCount": r0.get("entityNodeCount"),
-                            "entityEntityRelCount": r0.get("entityEntityRelCount"),
-                            "communityNodeCount": r0.get("communityNodeCount"),
-                            "communityRelCount": r0.get("communityRelCount"),
-                        }
-                        # Ensure all values are serializable
-                        yield {"event": "status", "data": json.dumps(payload, default=str)}
-                    else:
-                        # keep-alive with minimal payload
-                        yield {"event": "status", "data": json.dumps({"fileName": file_name, "status": "Pending"}, default=str)}
-
-                except asyncio.CancelledError:
-                    logging.info("SSE cancelled")
-                    break
-                except Exception as e:
-                    # Don’t crash the stream—emit an error event and continue
-                    logging.exception("update_extract_status loop error")
-                    err = {"fileName": file_name, "error": str(e)}
-                    yield {"event": "error", "data": json.dumps(err, default=str)}
-
-                # Avoid busy loop; also helps Render/proxies
-                await asyncio.sleep(1.0)
-
-        except Exception as outer:
-            logging.exception("update_extract_status outer error")
-            # If we fail before streaming started, at least yield one error event
-            yield {"event": "error", "data": json.dumps({"fileName": file_name, "error": str(outer)}, default=str)}
-
-    # sse-starlette accepts dicts; it will format as proper SSE
-    return EventSourceResponse(generate(), ping=30)
-
+                # get the current status of document node
+                
+                else:
+                    result = graphDb_data_Access.get_current_status_document_node(file_name)
+                    if len(result) > 0:
+                        status = json.dumps({'fileName':file_name, 
+                        'status':result[0]['Status'],
+                        'processingTime':result[0]['processingTime'],
+                        'nodeCount':result[0]['nodeCount'],
+                        'relationshipCount':result[0]['relationshipCount'],
+                        'model':result[0]['model'],
+                        'total_chunks':result[0]['total_chunks'],
+                        'fileSize':result[0]['fileSize'],
+                        'processed_chunk':result[0]['processed_chunk'],
+                        'fileSource':result[0]['fileSource'],
+                        'chunkNodeCount' : result[0]['chunkNodeCount'],
+                        'chunkRelCount' : result[0]['chunkRelCount'],
+                        'entityNodeCount' : result[0]['entityNodeCount'],
+                        'entityEntityRelCount' : result[0]['entityEntityRelCount'],
+                        'communityNodeCount' : result[0]['communityNodeCount'],
+                        'communityRelCount' : result[0]['communityRelCount']
+                        })
+                    yield status
+            except asyncio.CancelledError:
+                logging.info("SSE Connection cancelled")
+    
+    return EventSourceResponse(generate(),ping=60)
 
 @app.post("/delete_document_and_entities")
 async def delete_document_and_entities(uri=Form(None), 
@@ -1354,6 +1267,35 @@ async def get_system_prompt_slot_endpoint(slot: str):
     except Exception as e:
         logger.error(f"Error getting system prompt slot {slot}: {str(e)}")
         return create_api_response("Failed", message=f"Error getting system prompt slot {slot}: {str(e)}", error=str(e))
+
+@app.get("/get_active_system_prompt_slot")
+def get_active_system_prompt_slot_endpoint():
+    """Get which prompt slot is currently active for graph building and interaction"""
+    try:
+        from src.shared.constants import get_active_prompt_slot
+        active_slot = get_active_prompt_slot()
+        return create_api_response("Success", message=f"Active prompt slot: {active_slot}", data={"active_slot": active_slot})
+    except Exception as e:
+        logging.error(f"Error getting active system prompt slot: {e}")
+        return create_api_response("Failed", message="Error getting active prompt slot", error=str(e))
+
+@app.post("/set_active_system_prompt_slot")
+def set_active_system_prompt_slot_endpoint(slot: str = Form(...)):
+    """Set which prompt slot should be used as the main prompt for graph building and interaction"""
+    try:
+        if slot not in ['prompt_1', 'prompt_2', 'prompt_3']:
+            return create_api_response("Failed", message="Invalid slot name", error="Slot must be prompt_1, prompt_2, or prompt_3")
+        
+        from src.shared.constants import set_active_system_prompt
+        success = set_active_system_prompt(slot)
+        
+        if success:
+            return create_api_response("Success", message=f"Active prompt slot set to {slot}", data={"active_slot": slot})
+        else:
+            return create_api_response("Failed", message="Error setting active prompt slot", error="Failed to update configuration")
+    except Exception as e:
+        logging.error(f"Error setting active system prompt slot: {e}")
+        return create_api_response("Failed", message="Error setting active prompt slot", error=str(e))
 
 
 if __name__ == "__main__":

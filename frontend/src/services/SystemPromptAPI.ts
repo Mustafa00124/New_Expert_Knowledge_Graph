@@ -28,3 +28,32 @@ export const updateSystemPromptSlot = async (slot: string, prompt: string) => {
     throw error;
   }
 };
+
+export const getActiveSystemPromptSlot = async (): Promise<string> => {
+  try {
+    const response = await api.get('/get_active_system_prompt_slot');
+    if (response.data.status === 'Success') {
+      return response.data.data.active_slot;
+    }
+    throw new Error(response.data.message || 'Failed to get active prompt slot');
+  } catch (error) {
+    console.error('Error getting active prompt slot:', error);
+    throw error;
+  }
+};
+
+export const setActiveSystemPromptSlot = async (slot: string): Promise<boolean> => {
+  try {
+    const formData = new FormData();
+    formData.append('slot', slot);
+
+    const response = await api.post('/set_active_system_prompt_slot', formData);
+    if (response.data.status === 'Success') {
+      return true;
+    }
+    throw new Error(response.data.message || 'Failed to set active prompt slot');
+  } catch (error) {
+    console.error('Error setting active prompt slot:', error);
+    throw error;
+  }
+};

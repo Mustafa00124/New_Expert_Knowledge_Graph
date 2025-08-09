@@ -1087,6 +1087,60 @@ def update_system_prompt_slot(slot: str, prompt: str):
     return save_system_prompt_to_slot(slot, prompt)
 
 # Load the current system prompt (for backward compatibility)
-CURRENT_SYSTEM_PROMPT = get_system_prompt_by_slot('prompt_1')
+# This will be dynamically loaded based on the active prompt selection
+def get_active_system_prompt():
+    """Get the currently active system prompt for graph building and interaction"""
+    try:
+        # Check if there's a configuration file specifying which prompt to use
+        config_file = os.path.join(SYSTEM_PROMPT_DIR, 'active_prompt.txt')
+        if os.path.exists(config_file):
+            with open(config_file, 'r', encoding='utf-8') as f:
+                active_slot = f.read().strip()
+                if active_slot in ['prompt_1', 'prompt_2', 'prompt_3']:
+                    return get_system_prompt_by_slot(active_slot)
+        
+        # Default to prompt_1 if no configuration exists
+        return get_system_prompt_by_slot('prompt_1')
+    except Exception as e:
+        print(f"Error getting active system prompt: {e}")
+        # Fallback to prompt_1
+        return get_system_prompt_by_slot('prompt_1')
+
+def set_active_system_prompt(slot: str):
+    """Set which prompt slot should be used as the main prompt"""
+    try:
+        if slot not in ['prompt_1', 'prompt_2', 'prompt_3']:
+            return False
+        
+        ensure_prompt_directory()
+        config_file = os.path.join(SYSTEM_PROMPT_DIR, 'active_prompt.txt')
+        
+        with open(config_file, 'w', encoding='utf-8') as f:
+            f.write(slot)
+        
+        print(f"DEBUG: Set active prompt to {slot}")
+        return True
+    except Exception as e:
+        print(f"Error setting active system prompt: {e}")
+        return False
+
+def get_active_prompt_slot():
+    """Get which prompt slot is currently active"""
+    try:
+        config_file = os.path.join(SYSTEM_PROMPT_DIR, 'active_prompt.txt')
+        if os.path.exists(config_file):
+            with open(config_file, 'r', encoding='utf-8') as f:
+                active_slot = f.read().strip()
+                if active_slot in ['prompt_1', 'prompt_2', 'prompt_3']:
+                    return active_slot
+        
+        # Default to prompt_1 if no configuration exists
+        return 'prompt_1'
+    except Exception as e:
+        print(f"Error getting active prompt slot: {e}")
+        return 'prompt_1'
+
+# Initialize with the active prompt
+CURRENT_SYSTEM_PROMPT = get_active_system_prompt()
 
 

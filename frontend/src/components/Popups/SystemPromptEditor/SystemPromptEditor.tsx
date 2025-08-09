@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Dialog, TextArea, Typography, Banner } from '@neo4j-ndl/react';
-import { getSystemPromptSlot, updateSystemPromptSlot } from '../../../services/SystemPromptAPI';
+import {
+  getSystemPromptSlot,
+  updateSystemPromptSlot,
+  getActiveSystemPromptSlot,
+  setActiveSystemPromptSlot,
+} from '../../../services/SystemPromptAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/Toasts';
 
 interface SystemPromptEditorProps {
@@ -14,9 +19,23 @@ interface PromptSlots {
   prompt_3: string;
 }
 
+const getSlotDisplayName = (slot: string): string => {
+  switch (slot) {
+    case 'prompt_1':
+      return 'Prompt 1';
+    case 'prompt_2':
+      return 'Prompt 2';
+    case 'prompt_3':
+      return 'Prompt 3';
+    default:
+      return slot;
+  }
+};
+
 const SystemPromptEditor: React.FC<SystemPromptEditorProps> = ({ open, onClose }) => {
   const [systemPrompt, setSystemPrompt] = useState<string>('');
   const [currentSlot, setCurrentSlot] = useState<keyof PromptSlots>('prompt_1');
+  const [activeSlot, setActiveSlot] = useState<string>('prompt_1');
   const [promptSlots, setPromptSlots] = useState<PromptSlots>({
     prompt_1: '',
     prompt_2: '',
@@ -30,6 +49,7 @@ const SystemPromptEditor: React.FC<SystemPromptEditorProps> = ({ open, onClose }
     if (open) {
       loadSystemPrompt();
       loadAllPromptSlots();
+      loadActivePromptSlot();
     }
   }, [open]);
 
@@ -78,6 +98,15 @@ const SystemPromptEditor: React.FC<SystemPromptEditorProps> = ({ open, onClose }
     }
   };
 
+  const loadActivePromptSlot = async () => {
+    try {
+      const active = await getActiveSystemPromptSlot();
+      setActiveSlot(active);
+    } catch (error) {
+      console.error('Error loading active prompt slot:', error);
+    }
+  };
+
   const handleSaveToSlot = async (slot: keyof PromptSlots) => {
     try {
       setIsSaving(true);
@@ -123,14 +152,27 @@ const SystemPromptEditor: React.FC<SystemPromptEditorProps> = ({ open, onClose }
     }
   };
 
+  const handleSetActiveSlot = async (slot: keyof PromptSlots) => {
+    try {
+      setIsLoading(true);
+      const success = await setActiveSystemPromptSlot(slot);
+      if (success) {
+        setActiveSlot(slot);
+        // Show success message
+        showSuccessToast(`Prompt ${getSlotDisplayName(slot)} is now active for graph building and interaction!`);
+      }
+    } catch (error) {
+      console.error('Error setting active prompt slot:', error);
+      showErrorToast('Failed to set active prompt slot');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleCancel = () => {
     setSystemPrompt('');
     setError('');
     onClose();
-  };
-
-  const getSlotDisplayName = (slot: string) => {
-    return slot.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   const getCurrentSlotDisplayName = () => {
@@ -154,6 +196,14 @@ const SystemPromptEditor: React.FC<SystemPromptEditorProps> = ({ open, onClose }
 
       <Dialog.Content className='flex flex-col flex-1 min-h-0 p-4'>
         {error && <Banner type='danger' title='Error' description={error} className='mb-4 flex-shrink-0' />}
+
+        {/* Active Prompt Indicator */}
+        <Banner
+          type='info'
+          title={`Active Prompt: ${getSlotDisplayName(activeSlot)}`}
+          description="This prompt is currently used for graph building and interaction. You can change it by clicking 'Set Active' on any prompt slot."
+          className='mb-4 flex-shrink-0'
+        />
 
         <div className='flex-1 flex flex-col min-h-0'>
           {/* Current Slot Indicator */}
@@ -226,6 +276,15 @@ const SystemPromptEditor: React.FC<SystemPromptEditorProps> = ({ open, onClose }
                     className='flex-1'
                   >
                     Save {slot.replace('prompt_', 'P')}
+                  </Button>
+                  <Button
+                    fill='outlined'
+                    size='small'
+                    onClick={() => handleSetActiveSlot(slot)}
+                    isDisabled={isLoading || activeSlot === slot}
+                    className='flex-1'
+                  >
+                    {activeSlot === slot ? 'Active' : 'Set Active'}
                   </Button>
                 </div>
               </div>
