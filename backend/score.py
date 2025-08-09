@@ -49,17 +49,7 @@ from src.shared.constants import (BUCKET_UPLOAD,BUCKET_FAILED_FILE, PROJECT_ID, 
                                   START_FROM_BEGINNING,
                                   START_FROM_LAST_PROCESSED_POSITION,
                                   DELETE_ENTITIES_AND_START_FROM_BEGINNING,
-                                  QUERY_TO_GET_NODES_AND_RELATIONS_OF_A_DOCUMENT,
-                                  CURRENT_SYSTEM_PROMPT, update_current_system_prompt)
-from src.shared.constants import (BUCKET_UPLOAD,BUCKET_FAILED_FILE, PROJECT_ID, QUERY_TO_GET_CHUNKS, 
-                                  QUERY_TO_DELETE_EXISTING_ENTITIES, 
-                                  QUERY_TO_GET_LAST_PROCESSED_CHUNK_POSITION,
-                                  QUERY_TO_GET_LAST_PROCESSED_CHUNK_WITHOUT_ENTITY,
-                                  START_FROM_BEGINNING,
-                                  START_FROM_LAST_PROCESSED_POSITION,
-                                  DELETE_ENTITIES_AND_START_FROM_BEGINNING,
-                                  QUERY_TO_GET_NODES_AND_RELATIONS_OF_A_DOCUMENT,
-                                  CURRENT_SYSTEM_PROMPT, update_current_system_prompt)
+                                  QUERY_TO_GET_NODES_AND_RELATIONS_OF_A_DOCUMENT)
 
 
 logger = CustomLogger()
@@ -1245,26 +1235,86 @@ async def get_schema_visualization(uri=Form(None), userName=Form(None), password
     finally:
         gc.collect()
 
-@app.get("/system_prompt")
-async def get_system_prompt():
-    try:
-        prompt = load_system_prompt()  # Always read latest value from file
-        return create_api_response("Success", message="System prompt retrieved successfully", data={"system_prompt": prompt})
-    except Exception as e:
-        logger.error(f"Error getting system prompt: {str(e)}")
-        return create_api_response("Failed", message=f"Error getting system prompt: {str(e)}", error=str(e))
 
-@app.post("/update_system_prompt")
-async def update_system_prompt(system_prompt=Form()):
-    """Update the system prompt"""
+
+@app.post("/update_system_prompt_slot")
+async def update_system_prompt_slot_endpoint(slot=Form(), prompt=Form()):
+    """Update a specific system prompt slot (prompt_1, prompt_2, prompt_3)"""
     try:
-        if update_current_system_prompt(system_prompt):
-            return create_api_response("Success", message="System prompt updated successfully", data={"system_prompt": system_prompt})
+        if slot not in ['prompt_1', 'prompt_2', 'prompt_3']:
+            return create_api_response("Failed", message="Invalid slot name", error="Slot must be prompt_1, prompt_2, or prompt_3")
+        
+        from src.shared.constants import update_system_prompt_slot
+        if update_system_prompt_slot(slot, prompt):
+            return create_api_response("Success", message=f"System prompt {slot} updated successfully", data={"slot": slot, "prompt": prompt})
         else:
-            return create_api_response("Failed", message="Failed to save system prompt", error="Failed to save system prompt")
+            return create_api_response("Failed", message=f"Failed to save system prompt {slot}", error="Failed to save system prompt")
     except Exception as e:
-        logger.error(f"Error updating system prompt: {str(e)}")
-        return create_api_response("Failed", message=f"Error updating system prompt: {str(e)}", error=str(e))
+        logger.error(f"Error updating system prompt slot {slot}: {str(e)}")
+        return create_api_response("Failed", message=f"Error updating system prompt slot {slot}: {str(e)}", error=str(e))
+
+@app.get("/get_system_prompt_slot/{slot}")
+async def get_system_prompt_slot_endpoint(slot: str):
+    """Get a specific system prompt slot (prompt_1, prompt_2, prompt_3)"""
+    try:
+        if slot not in ['prompt_1', 'prompt_2', 'prompt_3']:
+            return create_api_response("Failed", message="Invalid slot name", error="Slot must be prompt_1, prompt_2, or prompt_3")
+        
+        from src.shared.constants import get_system_prompt_by_slot
+        prompt = get_system_prompt_by_slot(slot)
+        return create_api_response("Success", message=f"System prompt {slot} retrieved successfully", data={"slot": slot, "prompt": prompt})
+    except Exception as e:
+        logger.error(f"Error getting system prompt slot {slot}: {str(e)}")
+        return create_api_response("Failed", message=f"Error getting system prompt slot {slot}: {str(e)}", error=str(e))
+
+@app.get("/get_active_system_prompt_slot")
+def get_active_system_prompt_slot_endpoint():
+    """Get which prompt slot is currently active for graph building and interaction"""
+    try:
+        from src.shared.constants import get_active_prompt_slot
+        active_slot = get_active_prompt_slot()
+        return create_api_response("Success", message=f"Active prompt slot: {active_slot}", data={"active_slot": active_slot})
+    except Exception as e:
+        logging.error(f"Error getting active system prompt slot: {e}")
+        return create_api_response("Failed", message="Error getting active prompt slot", error=str(e))
+
+@app.post("/set_active_system_prompt_slot")
+def set_active_system_prompt_slot_endpoint(slot: str = Form(...)):
+    """Set which prompt slot should be used as the main prompt for graph building and interaction"""
+    try:
+        if slot not in ['prompt_1', 'prompt_2', 'prompt_3']:
+            return create_api_response("Failed", message="Invalid slot name", error="Slot must be prompt_1, prompt_2, or prompt_3")
+        
+        from src.shared.constants import set_active_system_prompt
+        success = set_active_system_prompt(slot)
+        
+        if success:
+            return create_api_response("Success", message=f"Active prompt slot set to {slot}", data={"active_slot": slot})
+        else:
+            return create_api_response("Failed", message="Error setting active prompt slot", error="Failed to update configuration")
+    except Exception as e:
+        logging.error(f"Error setting active system prompt slot: {e}")
+        return create_api_response("Failed", message="Error setting active prompt slot", error=str(e))
+
+@app.post("/refresh_system_prompt_cache")
+def refresh_system_prompt_cache_endpoint():
+    """Force refresh of system prompt cache - useful for debugging"""
+    try:
+        from src.shared.constants import get_current_system_prompt, get_active_prompt_slot
+        # This will force a fresh load of the system prompt
+        current_prompt = get_current_system_prompt()
+        active_slot = get_active_prompt_slot()
+        
+        return create_api_response("Success", 
+                                 message="System prompt cache refreshed", 
+                                 data={
+                                     "active_slot": active_slot,
+                                     "prompt_length": len(current_prompt) if current_prompt else 0,
+                                     "cache_refreshed": True
+                                 })
+    except Exception as e:
+        logging.error(f"Error refreshing system prompt cache: {e}")
+        return create_api_response("Failed", message="Error refreshing system prompt cache", error=str(e))
 
 
 if __name__ == "__main__":

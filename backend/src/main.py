@@ -37,6 +37,18 @@ warnings.filterwarnings("ignore")
 load_dotenv()
 logging.basicConfig(format='%(asctime)s - %(message)s',level='INFO')
 
+def initialize_system_prompts():
+    """Initialize system prompts on startup"""
+    try:
+        from src.shared.constants import ensure_prompt_directory
+        ensure_prompt_directory()
+        print("DEBUG: System prompts initialized successfully")
+    except Exception as e:
+        print(f"ERROR: Failed to initialize system prompts: {e}")
+
+# Call this function when the module is imported
+initialize_system_prompts()
+
 def create_source_node_graph_url_s3(graph, model, source_url, aws_access_key_id, aws_secret_access_key, source_type):
     
     lst_file_name = []

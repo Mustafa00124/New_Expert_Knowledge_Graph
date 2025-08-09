@@ -941,36 +941,278 @@ Additional Instructions:
 - Consider the context and domain of the document when extracting entities
 """
 
-SYSTEM_PROMPT_FILE = os.path.join(os.path.dirname(__file__), 'system_prompt.json')
+# More robust path resolution for system prompts
+def get_system_prompt_dir():
+    """Get the system prompts directory with fallback paths"""
+    # Try multiple possible locations
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), 'system_prompts'),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'system_prompts'),
+        os.path.join(os.getcwd(), 'src', 'shared', 'system_prompts'),
+        os.path.join(os.getcwd(), 'backend', 'src', 'shared', 'system_prompts')
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            print(f"DEBUG: Found system prompts directory at: {path}")
+            return path
+    
+    # If none exist, use the first one and create it
+    default_path = possible_paths[0]
+    print(f"DEBUG: No existing system prompts directory found, will create: {default_path}")
+    return default_path
+
+SYSTEM_PROMPT_DIR = get_system_prompt_dir()
+SYSTEM_PROMPT_1_FILE = os.path.join(SYSTEM_PROMPT_DIR, 'prompt_1.json')
+SYSTEM_PROMPT_2_FILE = os.path.join(SYSTEM_PROMPT_DIR, 'prompt_2.json')
+SYSTEM_PROMPT_3_FILE = os.path.join(SYSTEM_PROMPT_DIR, 'prompt_3.json')
+
+# Legacy file for backward compatibility
+SYSTEM_PROMPT_FILE = os.path.join(SYSTEM_PROMPT_DIR, 'system_prompt.json')
+
+def ensure_prompt_directory():
+    """Ensure the system prompts directory exists and has default prompts"""
+    if not os.path.exists(SYSTEM_PROMPT_DIR):
+        os.makedirs(SYSTEM_PROMPT_DIR)
+    
+    # Ensure default prompt_1 exists with the default SYSTEM_PROMPT
+    if not os.path.exists(SYSTEM_PROMPT_1_FILE):
+        print("DEBUG: Creating default prompt_1.json")
+        save_system_prompt_to_slot('prompt_1', SYSTEM_PROMPT)
+    else:
+        # Check if prompt_1 is empty and fix it
+        try:
+            with open(SYSTEM_PROMPT_1_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if not data.get('prompt', ''):
+                    print("DEBUG: prompt_1.json is empty, updating with SYSTEM_PROMPT")
+                    save_system_prompt_to_slot('prompt_1', SYSTEM_PROMPT)
+        except Exception as e:
+            print(f"DEBUG: Error checking prompt_1.json: {e}, recreating with SYSTEM_PROMPT")
+            save_system_prompt_to_slot('prompt_1', SYSTEM_PROMPT)
+    
+    # Ensure active_prompt.txt exists and points to prompt_1 by default
+    active_config_file = os.path.join(SYSTEM_PROMPT_DIR, 'active_prompt.txt')
+    if not os.path.exists(active_config_file):
+        print("DEBUG: Creating default active_prompt.txt")
+        with open(active_config_file, 'w', encoding='utf-8') as f:
+            f.write('prompt_1')
 
 def load_system_prompt():
     """Load system prompt from file, fallback to default if file doesn't exist"""
     try:
-        if os.path.exists(SYSTEM_PROMPT_FILE):
-            with open(SYSTEM_PROMPT_FILE, 'r', encoding='utf-8') as f:
+        # First try to load from the new separate files
+        ensure_prompt_directory()
+        
+        prompts = {}
+        
+        # Load prompt_1
+        if os.path.exists(SYSTEM_PROMPT_1_FILE):
+            with open(SYSTEM_PROMPT_1_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                return data.get('system_prompt', SYSTEM_PROMPT)
+                prompts['prompt_1'] = data.get('prompt', SYSTEM_PROMPT)
+        else:
+            prompts['prompt_1'] = SYSTEM_PROMPT
+        
+        # Load prompt_2
+        if os.path.exists(SYSTEM_PROMPT_2_FILE):
+            with open(SYSTEM_PROMPT_2_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                prompts['prompt_2'] = data.get('prompt', '')
+        else:
+            prompts['prompt_2'] = ''
+        
+        # Load prompt_3
+        if os.path.exists(SYSTEM_PROMPT_3_FILE):
+            with open(SYSTEM_PROMPT_3_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                prompts['prompt_3'] = data.get('prompt', '')
+        else:
+            prompts['prompt_3'] = ''
+        
+        return prompts
+        
     except Exception as e:
         print(f"Error loading system prompt: {e}")
-    return SYSTEM_PROMPT
+    
+    # Return default prompts structure
+    return {
+        'prompt_1': SYSTEM_PROMPT,
+        'prompt_2': 'checking prompt 2',
+        'prompt_3': 'checking prompt 3'
+    }
 
-def save_system_prompt(prompt: str):
-    """Save system prompt to file"""
+
+
+def save_system_prompt_to_slot(slot: str, prompt: str):
+    """Save a system prompt to a specific slot file"""
     try:
-        with open(SYSTEM_PROMPT_FILE, 'w', encoding='utf-8') as f:
-            json.dump({'system_prompt': prompt}, f, indent=2, ensure_ascii=False)
+        print(f"DEBUG: Attempting to save to slot {slot} with prompt: {prompt}")
+        print(f"DEBUG: Current working directory: {os.getcwd()}")
+        print(f"DEBUG: __file__ location: {__file__}")
+        print(f"DEBUG: SYSTEM_PROMPT_DIR: {SYSTEM_PROMPT_DIR}")
+        
+        ensure_prompt_directory()
+        
+        if slot == 'prompt_1':
+            file_path = SYSTEM_PROMPT_1_FILE
+        elif slot == 'prompt_2':
+            file_path = SYSTEM_PROMPT_2_FILE
+        elif slot == 'prompt_3':
+            file_path = SYSTEM_PROMPT_3_FILE
+        else:
+            print(f"DEBUG: Invalid slot {slot}")
+            return False
+        
+        print(f"DEBUG: Writing to file: {file_path}")
+        print(f"DEBUG: Absolute file path: {os.path.abspath(file_path)}")
+        
+        # Check if file exists before writing
+        if os.path.exists(file_path):
+            print(f"DEBUG: File exists before writing: {file_path}")
+        else:
+            print(f"DEBUG: File does not exist before writing: {file_path}")
+        
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump({'prompt': prompt}, f, indent=2, ensure_ascii=False)
+        
+        # Verify the file was written
+        if os.path.exists(file_path):
+            print(f"DEBUG: File exists after writing: {file_path}")
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = json.load(f)
+                print(f"DEBUG: File content after writing: {content}")
+        else:
+            print(f"DEBUG: File still does not exist after writing: {file_path}")
+        
+        print(f"DEBUG: Successfully wrote to {file_path}")
         return True
     except Exception as e:
-        print(f"Error saving system prompt: {e}")
+        print(f"Error saving system prompt to {slot}: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
-# Load the current system prompt
-CURRENT_SYSTEM_PROMPT = load_system_prompt()
+def get_system_prompt_by_slot(slot: str):
+    """Get system prompt by slot name (prompt_1, prompt_2, prompt_3)"""
+    try:
+        print(f"DEBUG: Getting prompt from slot: {slot}")
+        
+        if slot == 'prompt_1':
+            file_path = SYSTEM_PROMPT_1_FILE
+        elif slot == 'prompt_2':
+            file_path = SYSTEM_PROMPT_2_FILE
+        elif slot == 'prompt_3':
+            file_path = SYSTEM_PROMPT_3_FILE
+        else:
+            return ''
+        
+        print(f"DEBUG: Reading from file: {file_path}")
+        
+        if os.path.exists(file_path):
+            print(f"DEBUG: File exists: {file_path}")
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                prompt = data.get('prompt', '')
+                if prompt:
+                    print(f"DEBUG: Successfully loaded prompt from {slot}")
+                    return prompt
+                else:
+                    print(f"DEBUG: Empty prompt in {slot}")
+                    # For prompt_1, always fall back to hardcoded SYSTEM_PROMPT if empty
+                    if slot == 'prompt_1':
+                        print(f"DEBUG: prompt_1 is empty, falling back to hardcoded SYSTEM_PROMPT")
+                        return SYSTEM_PROMPT
+                    return ''
+        else:
+            print(f"DEBUG: File does not exist: {file_path}")
+            # For prompt_1, always fall back to hardcoded SYSTEM_PROMPT if file doesn't exist
+            if slot == 'prompt_1':
+                print(f"DEBUG: prompt_1 file doesn't exist, falling back to hardcoded SYSTEM_PROMPT")
+                return SYSTEM_PROMPT
+            return ''
+    except Exception as e:
+        print(f"Error getting system prompt from {slot}: {e}")
+        import traceback
+        traceback.print_exc()
+        # For prompt_1, always fall back to hardcoded SYSTEM_PROMPT on error
+        if slot == 'prompt_1':
+            print(f"DEBUG: Error occurred, falling back to hardcoded SYSTEM_PROMPT for prompt_1")
+            return SYSTEM_PROMPT
+        return ''
 
-def update_current_system_prompt(prompt: str):
-    """Update the current system prompt and save it to file"""
-    global CURRENT_SYSTEM_PROMPT
-    if save_system_prompt(prompt):
-        CURRENT_SYSTEM_PROMPT = prompt
+def update_system_prompt_slot(slot: str, prompt: str):
+    """Update a specific system prompt slot"""
+    return save_system_prompt_to_slot(slot, prompt)
+
+# Load the current system prompt (for backward compatibility)
+# This will be dynamically loaded based on the active prompt selection
+def get_active_system_prompt():
+    """Get the currently active system prompt for graph building and interaction"""
+    try:
+        # Check if there's a configuration file specifying which prompt to use
+        config_file = os.path.join(SYSTEM_PROMPT_DIR, 'active_prompt.txt')
+        if os.path.exists(config_file):
+            with open(config_file, 'r', encoding='utf-8') as f:
+                active_slot = f.read().strip()
+                if active_slot in ['prompt_1', 'prompt_2', 'prompt_3']:
+                    prompt = get_system_prompt_by_slot(active_slot)
+                    if prompt:  # Only return if we got a valid prompt
+                        print(f"DEBUG: Using active prompt from slot: {active_slot}")
+                        return prompt
+        
+        # Default to prompt_1 if no configuration exists or if loading failed
+        print("DEBUG: No active prompt config found, defaulting to prompt_1")
+        default_prompt = get_system_prompt_by_slot('prompt_1')
+        if default_prompt:
+            return default_prompt
+        
+        # Final fallback to the hardcoded SYSTEM_PROMPT
+        print("DEBUG: Using hardcoded SYSTEM_PROMPT as final fallback")
+        return SYSTEM_PROMPT
+        
+    except Exception as e:
+        print(f"Error getting active system prompt: {e}")
+        # Fallback to hardcoded SYSTEM_PROMPT
+        return SYSTEM_PROMPT
+
+def set_active_system_prompt(slot: str):
+    """Set which prompt slot should be used as the main prompt"""
+    try:
+        if slot not in ['prompt_1', 'prompt_2', 'prompt_3']:
+            return False
+        
+        ensure_prompt_directory()
+        config_file = os.path.join(SYSTEM_PROMPT_DIR, 'active_prompt.txt')
+        
+        with open(config_file, 'w', encoding='utf-8') as f:
+            f.write(slot)
+        
+        print(f"DEBUG: Set active prompt to {slot}")
         return True
-    return False
+    except Exception as e:
+        print(f"Error setting active system prompt: {e}")
+        return False
+
+def get_active_prompt_slot():
+    """Get which prompt slot is currently active"""
+    try:
+        config_file = os.path.join(SYSTEM_PROMPT_DIR, 'active_prompt.txt')
+        if os.path.exists(config_file):
+            with open(config_file, 'r', encoding='utf-8') as f:
+                active_slot = f.read().strip()
+                if active_slot in ['prompt_1', 'prompt_2', 'prompt_3']:
+                    return active_slot
+        
+        # Default to prompt_1 if no configuration exists
+        return 'prompt_1'
+    except Exception as e:
+        print(f"Error getting active prompt slot: {e}")
+        return 'prompt_1'
+
+# Add this function instead of caching:
+def get_current_system_prompt():
+    """Get the currently active system prompt dynamically (always fresh)"""
+    return get_active_system_prompt()
+
+
