@@ -12,9 +12,9 @@ Follow these steps to set up and run the project locally:
 
 1. Clone the Repository:
 
-> git clone https://github.com/neo4j-labs/llm-graph-builder.git
+> git clone https://github.com/Mustafa00124/New_Expert_Knowledge_Graph.git
 
-> cd llm-graph-builder
+> cd New_Expert_Knowledge_Graph
 
 2. Install Dependency :
 
