@@ -7,7 +7,11 @@ GROQ_MODELS = ["groq-llama3"]
 BUCKET_UPLOAD = 'llm-graph-builder-upload'
 BUCKET_FAILED_FILE = 'llm-graph-builder-failed'
 PROJECT_ID = 'llm-experiments-387609' 
-GRAPH_CHUNK_LIMIT = 50 
+
+# CRITICAL LIMITS - These control how much content can be processed
+GRAPH_CHUNK_LIMIT = int(os.getenv('GRAPH_CHUNK_LIMIT', 10000))  # Max chunks retrieved in graph queries (was 50)
+MAX_WIKIPEDIA_DOCS = int(os.getenv('MAX_WIKIPEDIA_DOCS', 100))  # Max Wikipedia documents to load (was 1)
+CHUNK_TEXT_OFFSET = int(os.getenv('CHUNK_TEXT_OFFSET', 100))  # Chunks per page in text queries (was 10)
 
 
 #query 

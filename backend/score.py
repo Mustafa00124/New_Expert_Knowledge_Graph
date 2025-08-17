@@ -23,7 +23,7 @@ import json
 from typing import List, Optional, Any, Dict
 from google.oauth2.credentials import Credentials
 import os
-from src.logger import CustomLogger
+import logging  # Updated to use standard logging
 from datetime import datetime, timezone
 import time
 import gc
@@ -51,8 +51,8 @@ from src.shared.constants import (BUCKET_UPLOAD,BUCKET_FAILED_FILE, PROJECT_ID, 
                                   DELETE_ENTITIES_AND_START_FROM_BEGINNING,
                                   QUERY_TO_GET_NODES_AND_RELATIONS_OF_A_DOCUMENT)
 
-
-logger = CustomLogger()
+# Initialize logger using the new logging system
+logger = logging.getLogger(__name__)
 CHUNK_DIR = os.path.join(os.path.dirname(__file__), "chunks")
 MERGED_DIR = os.path.join(os.path.dirname(__file__), "merged_files")
 
@@ -260,7 +260,7 @@ async def create_source_knowledge_graph_url(
         json_obj = {'api_name':'url_scan','db_url':uri,'url_scanned_file':lst_file_name, 'source_url':source_url, 'wiki_query':wiki_query, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','userName':userName, 'database':database, 'aws_access_key_id':aws_access_key_id,
                             'model':model, 'gcs_bucket_name':gcs_bucket_name, 'gcs_bucket_folder':gcs_bucket_folder, 'source_type':source_type,
                             'gcs_project_id':gcs_project_id, 'logging_time': formatted_time(datetime.now(timezone.utc)),'email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"URL scan completed: {json_obj}")
         result ={'elapsed_api_time' : f'{elapsed_time:.2f}'}
         return create_api_response("Success",message=message,success_count=success_count,failed_count=failed_count,file_name=lst_file_name,data=result)
     except LLMGraphBuilderException as e:
@@ -268,14 +268,14 @@ async def create_source_knowledge_graph_url(
         message = f" Unable to create source node for source type: {source_type} and source: {source}"
         # Set the status "Success" becuase we are treating these error already handled by application as like custom errors.
         json_obj = {'error_message':error_message, 'status':'Success','db_url':uri, 'userName':userName, 'database':database,'success_count':1, 'source_type': source_type, 'source_url':source_url, 'wiki_query':wiki_query, 'logging_time': formatted_time(datetime.now(timezone.utc)),'email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"URL scan error (handled): {json_obj}")
         logging.exception(f'File Failed in upload: {e}')
         return create_api_response('Failed',message=message + error_message[:80],error=error_message,file_source=source_type)
     except Exception as e:
         error_message = str(e)
         message = f" Unable to create source node for source type: {source_type} and source: {source}"
         json_obj = {'error_message':error_message, 'status':'Failed','db_url':uri, 'userName':userName, 'database':database,'failed_count':1, 'source_type': source_type, 'source_url':source_url, 'wiki_query':wiki_query, 'logging_time': formatted_time(datetime.now(timezone.utc)),'email':email}
-        logger.log_struct(json_obj, "ERROR")
+        logger.error(f"URL scan failed: {json_obj}")
         logging.exception(f'Exception Stack trace upload:{e}')
         return create_api_response('Failed',message=message + error_message[:80],error=error_message,file_source=source_type)
     finally:
@@ -403,7 +403,7 @@ async def extract_knowledge_graph_from_file(
             result['language'] = language
             result['retry_condition'] = retry_condition
             result['email'] = email
-        logger.log_struct(result, "INFO")
+        logger.info(f"Extraction completed: {result}")
         result.update(uri_latency)
         logging.info(f"extraction completed in {extract_api_time:.2f} seconds for file name {file_name}")
         
@@ -420,7 +420,7 @@ async def extract_knowledge_graph_from_file(
         json_obj = {'api_name':'extract','message':error_message,'file_created_at':formatted_time(node_detail[0]['created_time']),'error_message':error_message, 'file_name': file_name,'status':'Completed',
                     'db_url':uri, 'userName':userName, 'database':database,'success_count':1, 'source_type': source_type, 'source_url':source_url, 'wiki_query':wiki_query, 'logging_time': formatted_time(datetime.now(timezone.utc)),'email':email,
                     'allowedNodes': allowedNodes, 'allowedRelationship': allowedRelationship}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"Extraction error (handled): {json_obj}")
         logging.exception(f'File Failed in extraction: {e}')
         
         return create_api_response("Failed", message = error_message, error=error_message, file_name=file_name)
@@ -437,7 +437,7 @@ async def extract_knowledge_graph_from_file(
         json_obj = {'api_name':'extract','message':message,'file_created_at':formatted_time(node_detail[0]['created_time']),'error_message':error_message, 'file_name': file_name,'status':'Failed',
                     'db_url':uri, 'userName':userName, 'database':database,'failed_count':1, 'source_type': source_type, 'source_url':source_url, 'wiki_query':wiki_query, 'logging_time': formatted_time(datetime.now(timezone.utc)),'email':email,
                     'allowedNodes': allowedNodes, 'allowedRelationship': allowedRelationship}
-        logger.log_struct(json_obj, "ERROR")
+        logger.error(f"Extraction failed: {json_obj}")
         logging.exception(f'File Failed in extraction: {e}')
         
         return create_api_response('Failed', message=message + error_message[:100], error=error_message, file_name = file_name)
@@ -460,7 +460,7 @@ async def get_source_list(
         end = time.time()
         elapsed_time = end - start
         json_obj = {'api_name':'sources_list','db_url':uri, 'userName':userName, 'database':database, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"Sources list retrieved: {json_obj}")
         return create_api_response("Success",data=result, message=f"Total elapsed API time {elapsed_time:.2f}")
     except Exception as e:
         job_status = "Failed"
@@ -513,7 +513,7 @@ async def post_processing(uri=Form(None), userName=Form(None), password=Form(Non
         end = time.time()
         elapsed_time = end - start
         json_obj = {'api_name': api_name, 'db_url': uri, 'userName':userName, 'database':database, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj)
+        logger.info(f"Post processing completed: {json_obj}")
         
         return create_api_response('Success', data=count_response, message='All tasks completed successfully')
     
@@ -548,7 +548,7 @@ async def chat_bot(uri=Form(None),model=Form(None),userName=Form(None), password
         
         json_obj = {'api_name':'chat_bot','db_url':uri, 'userName':userName, 'database':database, 'question':question,'document_names':document_names,
                              'session_id':session_id, 'mode':mode, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{total_call_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"Chat bot API call: {json_obj}")
         
         return create_api_response('Success',data=result)
     except Exception as e:
@@ -570,7 +570,7 @@ async def chunk_entities(uri=Form(None),userName=Form(None), password=Form(None)
         elapsed_time = end - start
         json_obj = {'api_name':'chunk_entities','db_url':uri, 'userName':userName, 'database':database, 'nodedetails':nodedetails,'entities':entities,
                             'mode':mode, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"Chunk entities API call: {json_obj}")
         return create_api_response('Success',data=result,message=f"Total elapsed API time {elapsed_time:.2f}")
     except Exception as e:
         job_status = "Failed"
@@ -589,7 +589,7 @@ async def get_neighbours(uri=Form(None),userName=Form(None), password=Form(None)
         end = time.time()
         elapsed_time = end - start
         json_obj = {'api_name':'get_neighbours', 'userName':userName, 'database':database,'db_url':uri, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"Get neighbours API call: {json_obj}")
         return create_api_response('Success',data=result,message=f"Total elapsed API time {elapsed_time:.2f}")
     except Exception as e:
         job_status = "Failed"
@@ -622,7 +622,7 @@ async def graph_query(
         end = time.time()
         elapsed_time = end - start
         json_obj = {'api_name':'graph_query','db_url':uri, 'userName':userName, 'database':database, 'document_names':document_names, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"Graph query API call: {json_obj}")
         return create_api_response('Success', data=result,message=f"Total elapsed API time {elapsed_time:.2f}")
     except Exception as e:
         job_status = "Failed"
@@ -643,7 +643,7 @@ async def clear_chat_bot(uri=Form(None),userName=Form(None), password=Form(None)
         end = time.time()
         elapsed_time = end - start
         json_obj = {'api_name':'clear_chat_bot', 'db_url':uri, 'userName':userName, 'database':database, 'session_id':session_id, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"Clear chat bot API call: {json_obj}")
         return create_api_response('Success',data=result)
     except Exception as e:
         job_status = "Failed"
@@ -692,7 +692,7 @@ async def connect(uri=Form(None), userName=Form(None), password=Form(None), data
         end = time.time()
         elapsed_time = end - start
         json_obj = {'api_name':'connect','db_url':uri, 'userName':userName, 'database':database, 'count':1, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"Connect API call: {json_obj}")
         result['elapsed_api_time'] = f'{elapsed_time:.2f}'
         result['gcs_file_cache'] = gcs_file_cache
         return create_api_response('Success',data=result)
@@ -716,7 +716,7 @@ async def upload_large_file_into_chunks(file:UploadFile = File(...), chunkNumber
         if int(chunkNumber) == int(totalChunks):
             json_obj = {'api_name':'upload','db_url':uri,'userName':userName, 'database':database, 'chunkNumber':chunkNumber,'totalChunks':totalChunks,
                                 'original_file_name':originalname,'model':model, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-            logger.log_struct(json_obj, "INFO")
+            logger.info(f"Upload API call: {json_obj}")
         if int(chunkNumber) == int(totalChunks):
             return create_api_response('Success',data=result, message='Source Node Created Successfully')
         else:
@@ -742,7 +742,7 @@ async def get_structured_schema(uri=Form(None), userName=Form(None), password=Fo
         elapsed_time = end - start
         logging.info(f'Schema result from DB: {result}')
         json_obj = {'api_name':'schema','db_url':uri, 'userName':userName, 'database':database, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"Schema API call: {json_obj}")
         return create_api_response('Success', data=result,message=f"Total elapsed API time {elapsed_time:.2f}")
     except Exception as e:
         message="Unable to get the labels and relationtypes from neo4j database"
@@ -831,7 +831,7 @@ async def delete_document_and_entities(uri=Form(None),
         elapsed_time = end - start
         json_obj = {'api_name':'delete_document_and_entities','db_url':uri, 'userName':userName, 'database':database, 'filenames':filenames,'deleteEntities':deleteEntities,
                             'source_types':source_types, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"Delete document and entities API call: {json_obj}")
         return create_api_response('Success',message=message)
     except Exception as e:
         job_status = "Failed"
@@ -892,7 +892,7 @@ async def cancelled_job(uri=Form(None), userName=Form(None), password=Form(None)
         elapsed_time = end - start
         json_obj = {'api_name':'cancelled_job','db_url':uri, 'userName':userName, 'database':database, 'filenames':filenames,
                             'source_types':source_types, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"API call: {json_obj}")
         return create_api_response('Success',message=result)
     except Exception as e:
         job_status = "Failed"
@@ -911,7 +911,7 @@ async def populate_graph_schema(input_text=Form(None), model=Form(None), is_sche
         end = time.time()
         elapsed_time = end - start
         json_obj = {'api_name':'populate_graph_schema', 'model':model, 'is_schema_description_checked':is_schema_description_checked, 'input_text':input_text, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"API call: {json_obj}")
         return create_api_response('Success',data=result)
     except Exception as e:
         job_status = "Failed"
@@ -932,7 +932,7 @@ async def get_unconnected_nodes_list(uri=Form(None), userName=Form(None), passwo
         end = time.time()
         elapsed_time = end - start
         json_obj = {'api_name':'get_unconnected_nodes_list','db_url':uri, 'userName':userName, 'database':database, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"API call: {json_obj}")
         return create_api_response('Success',data=nodes_list,message=total_nodes)
     except Exception as e:
         job_status = "Failed"
@@ -953,7 +953,7 @@ async def delete_orphan_nodes(uri=Form(None), userName=Form(None), password=Form
         end = time.time()
         elapsed_time = end - start
         json_obj = {'api_name':'delete_unconnected_nodes','db_url':uri, 'userName':userName, 'database':database,'unconnected_entities_list':unconnected_entities_list, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"API call: {json_obj}")
         return create_api_response('Success',data=result,message="Unconnected entities delete successfully")
     except Exception as e:
         job_status = "Failed"
@@ -974,7 +974,7 @@ async def get_duplicate_nodes(uri=Form(None), userName=Form(None), password=Form
         end = time.time()
         elapsed_time = end - start
         json_obj = {'api_name':'get_duplicate_nodes','db_url':uri,'userName':userName, 'database':database, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"API call: {json_obj}")
         return create_api_response('Success',data=nodes_list, message=total_nodes)
     except Exception as e:
         job_status = "Failed"
@@ -996,7 +996,7 @@ async def merge_duplicate_nodes(uri=Form(None), userName=Form(None), password=Fo
         elapsed_time = end - start
         json_obj = {'api_name':'merge_duplicate_nodes','db_url':uri, 'userName':userName, 'database':database,
                             'duplicate_nodes_list':duplicate_nodes_list, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"API call: {json_obj}")
         return create_api_response('Success',data=result,message="Duplicate entities merged successfully")
     except Exception as e:
         job_status = "Failed"
@@ -1018,7 +1018,7 @@ async def drop_create_vector_index(uri=Form(None), userName=Form(None), password
         elapsed_time = end - start
         json_obj = {'api_name':'drop_create_vector_index', 'db_url':uri, 'userName':userName, 'database':database,
                             'isVectorIndexExist':isVectorIndexExist, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"API call: {json_obj}")
         return create_api_response('Success',message=result)
     except Exception as e:
         job_status = "Failed"
@@ -1039,7 +1039,7 @@ async def retry_processing(uri=Form(None), userName=Form(None), password=Form(No
         elapsed_time = end - start
         json_obj = {'api_name':'retry_processing', 'db_url':uri, 'userName':userName, 'database':database, 'file_name':file_name,'retry_condition':retry_condition,
                             'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}','email':email}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"API call: {json_obj}")
         if chunks[0]['text'] is None or chunks[0]['text']=="" or not chunks :
             return create_api_response('Success',message=f"Chunks are not created for the file{file_name}. Please upload again the file to re-process.",data=chunks)
         else:
@@ -1080,7 +1080,7 @@ async def calculate_metric(question: str = Form(),
         elapsed_time = end - start
         json_obj = {'api_name':'metric', 'question':question, 'context':context, 'answer':answer, 'model':model,'mode':mode,
                             'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}'}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"API call: {json_obj}")
         return create_api_response('Success', data=data)
     except Exception as e:
         logging.exception(f"Error while calculating evaluation metrics: {e}")
@@ -1158,7 +1158,7 @@ async def fetch_chunktext(
            'elapsed_api_time': f'{elapsed_time:.2f}',
            'email': email
        }
-       logger.log_struct(json_obj, "INFO")
+       logger.info(f"API call: {json_obj}")
        return create_api_response('Success', data=result, message=f"Total elapsed API time {elapsed_time:.2f}")
    except Exception as e:
        job_status = "Failed"
@@ -1194,7 +1194,7 @@ async def backend_connection_configuration():
                 result['elapsed_api_time'] = f'{elapsed_time:.2f}'
                 result['graph_connection'] = f'{graph_connection}',
                 result['connection_from'] = 'backendAPI'
-                logger.log_struct(result, "INFO")
+                logger.info(f"API result: {result}")
                 return create_api_response('Success',message=f"Backend connection successful",data=result)
         else:
             graph_connection = False
@@ -1224,7 +1224,7 @@ async def get_schema_visualization(uri=Form(None), userName=Form(None), password
         elapsed_time = end - start
         logging.info(f'Schema result from DB: {result}')
         json_obj = {'api_name':'schema_visualization','db_url':uri, 'userName':userName, 'database':database, 'logging_time': formatted_time(datetime.now(timezone.utc)), 'elapsed_api_time':f'{elapsed_time:.2f}'}
-        logger.log_struct(json_obj, "INFO")
+        logger.info(f"API call: {json_obj}")
         return create_api_response('Success', data=result,message=f"Total elapsed API time {elapsed_time:.2f}")
     except Exception as e:
         message="Unable to get schema visualization from neo4j database"

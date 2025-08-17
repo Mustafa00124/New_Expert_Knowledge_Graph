@@ -45,20 +45,65 @@ def load_document_content(file_path):
 def get_documents_from_file_by_path(file_path,file_name):
     file_path = Path(file_path)
     if not file_path.exists():
-        logging.info(f'File {file_name} does not exist')
+        logging.info(f'❌ File {file_name} does not exist')
         raise Exception(f'File {file_name} does not exist')
-    logging.info(f'file {file_name} processing')
+    
+    logging.info("=" * 60)
+    logging.info("📁 STARTING LOCAL FILE LOADING")
+    logging.info("=" * 60)
+    logging.info(f"📁 File path: {file_path}")
+    logging.info(f"📄 File name: {file_name}")
+    logging.info(f"🔧 File extension: {file_path.suffix.lower()}")
+    logging.info(f"📏 File size: {file_path.stat().st_size} bytes")
+    
     try:
         loader, encoding_flag = load_document_content(file_path)
         file_extension = file_path.suffix.lower()
+        logging.info(f"✅ Loader created successfully")
+        logging.info(f"🔧 Encoding flag: {encoding_flag}")
+        logging.info(f"🔧 Loader type: {type(loader).__name__}")
+        
         if file_extension == ".pdf" or (file_extension == ".txt" and encoding_flag):
+            logging.info(f"📖 Loading PDF/TXT with structured loader...")
             pages = loader.load()
+            logging.info(f"📄 Raw pages loaded: {len(pages)}")
+            
+            # Additional validation for PDFs
+            if file_extension == ".pdf" and len(pages) == 0:
+                logging.error(f"❌ PDF loader returned 0 pages. This might indicate:")
+                logging.error(f"   - PDF is corrupted or password-protected")
+                logging.error(f"   - PDF parsing library issue")
+                logging.error(f"   - File is empty or invalid")
+                raise Exception(f"PDF loader failed to extract any pages from {file_name}")
+                
         else:
+            logging.info(f"📄 Loading unstructured document...")
             unstructured_pages = loader.load()
+            logging.info(f"📄 Unstructured pages loaded: {len(unstructured_pages)}")
             pages = get_pages_with_page_numbers(unstructured_pages)
+        
+        logging.info(f"✅ File loading completed!")
+        logging.info(f"📄 Total pages loaded: {len(pages)}")
+        
+        # Log details about each page
+        for i, page in enumerate(pages):
+            logging.info(f"   📄 Page {i+1}: {len(page.page_content)} characters")
+            if hasattr(page, 'metadata') and 'page_number' in page.metadata:
+                logging.info(f"      📊 Page number: {page.metadata['page_number']}")
+        
+        # Final validation
+        if len(pages) == 0:
+            logging.error(f"❌ CRITICAL: No pages extracted from file {file_name}")
+            raise Exception(f"No content could be extracted from {file_name}. File may be corrupted or empty.")
+        
+        logging.info("=" * 60)
+        return file_name, pages, file_extension
+        
     except Exception as e:
+        logging.error(f"❌ File loading failed: {str(e)}")
+        logging.error(f"❌ Exception type: {type(e).__name__}")
+        logging.error(f"❌ File details: {file_path}, size: {file_path.stat().st_size if file_path.exists() else 'N/A'} bytes")
         raise Exception(f'Error while reading the file content or metadata, {e}')
-    return file_name, pages , file_extension
 
 def get_pages_with_page_numbers(unstructured_pages):
     pages = []

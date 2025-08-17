@@ -242,18 +242,22 @@ def create_source_node_graph_url_wikipedia(graph, model, wiki_query, source_type
 async def extract_graph_from_file_local_file(uri, userName, password, database, model, merged_file_path, fileName, allowedNodes, allowedRelationship, token_chunk_size, chunk_overlap, chunks_to_combine, retry_condition, additional_instructions):
 
   logging.info(f'Process file name :{fileName}')
-  if not retry_condition:
-    gcs_file_cache = os.environ.get('GCS_FILE_CACHE')
-    if gcs_file_cache == 'True':
-      folder_name = create_gcs_bucket_folder_name_hashed(uri, fileName)
-      file_name, pages = get_documents_from_gcs( PROJECT_ID, BUCKET_UPLOAD, folder_name, fileName)
-    else:
-      file_name, pages, file_extension = get_documents_from_file_by_path(merged_file_path,fileName)
-    if pages==None or len(pages)==0:
-      raise LLMGraphBuilderException(f'File content is not available for file : {file_name}')
-    return await processing_source(uri, userName, password, database, model, file_name, pages, allowedNodes, allowedRelationship, token_chunk_size, chunk_overlap, chunks_to_combine, True, merged_file_path, additional_instructions=additional_instructions)
+  # Always load the file content first, regardless of retry condition
+  gcs_file_cache = os.environ.get('GCS_FILE_CACHE')
+  if gcs_file_cache == 'True':
+    folder_name = create_gcs_bucket_folder_name_hashed(uri, fileName)
+    file_name, pages = get_documents_from_gcs( PROJECT_ID, BUCKET_UPLOAD, folder_name, fileName)
   else:
-    return await processing_source(uri, userName, password, database, model, fileName, [], allowedNodes, allowedRelationship, token_chunk_size, chunk_overlap, chunks_to_combine, True, merged_file_path, retry_condition, additional_instructions=additional_instructions)
+    file_name, pages, file_extension = get_documents_from_file_by_path(merged_file_path,fileName)
+  
+  # Validate that we have content
+  if pages==None or len(pages)==0:
+    raise LLMGraphBuilderException(f'File content is not available for file : {file_name}')
+  
+  logging.info(f'✅ File loaded successfully: {len(pages)} pages')
+  
+  # Now process with the loaded content
+  return await processing_source(uri, userName, password, database, model, file_name, pages, allowedNodes, allowedRelationship, token_chunk_size, chunk_overlap, chunks_to_combine, True, merged_file_path, retry_condition, additional_instructions=additional_instructions)
   
 async def extract_graph_from_file_s3(uri, userName, password, database, model, source_url, aws_access_key_id, aws_secret_access_key, file_name, allowedNodes, allowedRelationship, token_chunk_size, chunk_overlap, chunks_to_combine, retry_condition, additional_instructions):
   if not retry_condition:
@@ -322,15 +326,37 @@ async def processing_source(uri, userName, password, database, model, file_name,
    	 Json response to API with fileName, nodeCount, relationshipCount, processingTime, 
      status and model as attributes.
   """
+  logging.info("=" * 100)
+  logging.info("🚀 STARTING MAIN PROCESSING PIPELINE")
+  logging.info("=" * 100)
+  logging.info(f"📁 File: {file_name}")
+  logging.info(f"📄 Total pages received: {len(pages) if pages else 0}")
+  logging.info(f"🔧 Token chunk size: {token_chunk_size}")
+  logging.info(f"🔗 Chunk overlap: {chunk_overlap}")
+  logging.info(f"🔗 Chunks to combine: {chunks_to_combine}")
+  logging.info(f"🎯 Allowed nodes: {allowedNodes}")
+  logging.info(f"🔗 Allowed relationships: {allowedRelationship}")
+  logging.info(f"🔄 Retry condition: {retry_condition}")
+  logging.info(f"📝 Additional instructions: {additional_instructions}")
+  logging.info("=" * 100)
+  
+  # CRITICAL VALIDATION: Ensure we have content to process
+  if not pages or len(pages) == 0:
+    error_msg = f"❌ CRITICAL ERROR: No pages loaded for file {file_name}. Cannot proceed with processing."
+    logging.error(error_msg)
+    raise LLMGraphBuilderException(error_msg)
+  
+  logging.info(f"✅ Content validation passed: {len(pages)} pages ready for processing")
+  
   uri_latency = {}
-  response = {}  
+  response = {}
   start_time = datetime.now()
   processing_source_start_time = time.time()
   start_create_connection = time.time()
   graph = create_graph_database_connection(uri, userName, password, database)
   end_create_connection = time.time()
   elapsed_create_connection = end_create_connection - start_create_connection
-  logging.info(f'Time taken database connection: {elapsed_create_connection:.2f} seconds')
+  logging.info(f'⏱️  Time taken database connection: {elapsed_create_connection:.2f} seconds')
   uri_latency["create_connection"] = f'{elapsed_create_connection:.2f}'
   graphDb_data_Access = graphDBdataAccess(graph)
   create_chunk_vector_index(graph)
@@ -338,7 +364,11 @@ async def processing_source(uri, userName, password, database, model, file_name,
   total_chunks, chunkId_chunkDoc_list = get_chunkId_chunkDoc_list(graph, file_name, pages, token_chunk_size, chunk_overlap, retry_condition)
   end_get_chunkId_chunkDoc_list = time.time()
   elapsed_get_chunkId_chunkDoc_list = end_get_chunkId_chunkDoc_list - start_get_chunkId_chunkDoc_list
-  logging.info(f'Time taken to create list chunkids with chunk document: {elapsed_get_chunkId_chunkDoc_list:.2f} seconds')
+  logging.info(f'⏱️  Time taken to create list chunkids with chunk document: {elapsed_get_chunkId_chunkDoc_list:.2f} seconds')
+  logging.info(f'📊 CHUNK CREATION RESULTS:')
+  logging.info(f'   ➡️  Total chunks created: {total_chunks}')
+  logging.info(f'   ➡️  Chunk ID list length: {len(chunkId_chunkDoc_list)}')
+  logging.info(f'   📈 Pages to chunks ratio: {total_chunks/len(pages):.2f} chunks per page' if pages else 'N/A')
   uri_latency["create_list_chunk_and_document"] = f'{elapsed_get_chunkId_chunkDoc_list:.2f}'
   uri_latency["total_chunks"] = total_chunks
 
@@ -346,7 +376,7 @@ async def processing_source(uri, userName, password, database, model, file_name,
   result = graphDb_data_Access.get_current_status_document_node(file_name)
   end_status_document_node = time.time()
   elapsed_status_document_node = end_status_document_node - start_status_document_node
-  logging.info(f'Time taken to get the current status of document node: {elapsed_status_document_node:.2f} seconds')
+  logging.info(f'⏱️  Time taken to get the current status of document node: {elapsed_status_document_node:.2f} seconds')
   uri_latency["get_status_document_node"] = f'{elapsed_status_document_node:.2f}'
 
   select_chunks_with_retry=0
@@ -366,42 +396,50 @@ async def processing_source(uri, userName, password, database, model, file_name,
           rel_count = result[0]['relationshipCount']
           select_chunks_with_retry = result[0]['processed_chunk']
       obj_source_node.processed_chunk = 0+select_chunks_with_retry
-      logging.info(file_name)
-      logging.info(obj_source_node)
+      logging.info(f'📊 Processing status: {obj_source_node}')
       
       start_update_source_node = time.time()
       graphDb_data_Access.update_source_node(obj_source_node)
       graphDb_data_Access.update_node_relationship_count(file_name)
       end_update_source_node = time.time()
       elapsed_update_source_node = end_update_source_node - start_update_source_node
-      logging.info(f'Time taken to update the document source node: {elapsed_update_source_node:.2f} seconds')
+      logging.info(f'⏱️  Time taken to update the document source node: {elapsed_update_source_node:.2f} seconds')
       uri_latency["update_source_node"] = f'{elapsed_update_source_node:.2f}'
 
-      logging.info('Update the status as Processing')
+      logging.info('🔄 Update the status as Processing')
       update_graph_chunk_processed = int(os.environ.get('UPDATE_GRAPH_CHUNKS_PROCESSED'))
+      logging.info(f'⚙️  UPDATE_GRAPH_CHUNKS_PROCESSED: {update_graph_chunk_processed}')
       # selected_chunks = []
       is_cancelled_status = False
       job_status = "Completed"
+      
+      logging.info("=" * 80)
+      logging.info("🔄 STARTING BATCH PROCESSING")
+      logging.info("=" * 80)
+      
       for i in range(0, len(chunkId_chunkDoc_list), update_graph_chunk_processed):
         select_chunks_upto = i+update_graph_chunk_processed
-        logging.info(f'Selected Chunks upto: {select_chunks_upto}')
+        logging.info(f'📦 Processing batch: chunks {i} to {select_chunks_upto} (total: {len(chunkId_chunkDoc_list)})')
         if len(chunkId_chunkDoc_list) <= select_chunks_upto:
           select_chunks_upto = len(chunkId_chunkDoc_list)
         selected_chunks = chunkId_chunkDoc_list[i:select_chunks_upto]
+        logging.info(f'   ➡️  Selected {len(selected_chunks)} chunks for this batch')
         
         result = graphDb_data_Access.get_current_status_document_node(file_name)
         is_cancelled_status = result[0]['is_cancelled']
-        logging.info(f"Value of is_cancelled : {result[0]['is_cancelled']}")
+        logging.info(f"   🚫 Cancelled status: {result[0]['is_cancelled']}")
         if bool(is_cancelled_status) == True:
           job_status = "Cancelled"
-          logging.info('Exit from running loop of processing file')
+          logging.info('❌ Exit from running loop of processing file - CANCELLED')
           break
         else:
           processing_chunks_start_time = time.time()
+          logging.info(f'   🔄 Processing batch with {len(selected_chunks)} chunks...')
           node_count,rel_count,latency_processed_chunk = await processing_chunks(selected_chunks,graph,uri, userName, password, database,file_name,model,allowedNodes,allowedRelationship,chunks_to_combine,node_count, rel_count, additional_instructions)
           processing_chunks_end_time = time.time()
           processing_chunks_elapsed_end_time = processing_chunks_end_time - processing_chunks_start_time
-          logging.info(f"Time taken {update_graph_chunk_processed} chunks processed upto {select_chunks_upto} completed in {processing_chunks_elapsed_end_time:.2f} seconds for file name {file_name}")
+          logging.info(f"   ✅ Batch completed in {processing_chunks_elapsed_end_time:.2f} seconds")
+          logging.info(f"   📊 Cumulative results: {node_count} nodes, {rel_count} relationships")
           uri_latency[f'processed_combine_chunk_{i}-{select_chunks_upto}'] = f'{processing_chunks_elapsed_end_time:.2f}'
           uri_latency[f'processed_chunk_detail_{i}-{select_chunks_upto}'] = latency_processed_chunk
           end_time = datetime.now()
@@ -422,12 +460,27 @@ async def processing_source(uri, userName, password, database, model, file_name,
           graphDb_data_Access.update_source_node(obj_source_node)
           graphDb_data_Access.update_node_relationship_count(file_name)
       
+      logging.info("=" * 80)
+      logging.info("📊 FINAL PROCESSING SUMMARY")
+      logging.info("=" * 80)
+      logging.info(f"📁 File: {file_name}")
+      logging.info(f"📄 Total pages processed: {len(pages) if pages else 0}")
+      logging.info(f"🔧 Token chunk size: {token_chunk_size}")
+      logging.info(f"🔗 Chunk overlap: {chunk_overlap}")
+      logging.info(f"🔗 Chunks to combine: {chunks_to_combine}")
+      logging.info(f"📊 Total chunks created: {total_chunks}")
+      logging.info(f"🎯 Final node count: {node_count}")
+      logging.info(f"🔗 Final relationship count: {rel_count}")
+      logging.info(f"⚙️  Batch size: {update_graph_chunk_processed}")
+      logging.info(f"⏱️  Total processing time: {processed_time}")
+      logging.info("=" * 80)
+      
       result = graphDb_data_Access.get_current_status_document_node(file_name)
       is_cancelled_status = result[0]['is_cancelled']
       if bool(is_cancelled_status) == True:
-        logging.info(f'Is_cancelled True at the end extraction')
+        logging.info(f'❌ Is_cancelled True at the end extraction')
         job_status = 'Cancelled'
-      logging.info(f'Job Status at the end : {job_status}')
+      logging.info(f'✅ Job Status at the end : {job_status}')
       end_time = datetime.now()
       processed_time = end_time - start_time
       obj_source_node = sourceNode()
@@ -437,8 +490,8 @@ async def processing_source(uri, userName, password, database, model, file_name,
 
       graphDb_data_Access.update_source_node(obj_source_node)
       graphDb_data_Access.update_node_relationship_count(file_name)
-      logging.info('Updated the nodeCount and relCount properties in Document node')
-      logging.info(f'file:{file_name} extraction has been completed')
+      logging.info('✅ Updated the nodeCount and relCount properties in Document node')
+      logging.info(f'✅ File {file_name} extraction has been completed')
 
 
       # merged_file_path have value only when file uploaded from local
@@ -477,6 +530,17 @@ async def processing_source(uri, userName, password, database, model, file_name,
 
 async def processing_chunks(chunkId_chunkDoc_list,graph,uri, userName, password, database,file_name,model,allowedNodes,allowedRelationship, chunks_to_combine, node_count, rel_count, additional_instructions=None):
   #create vector index and update chunk node with embedding
+  logging.info("=" * 80)
+  logging.info("🔄 STARTING CHUNK PROCESSING")
+  logging.info("=" * 80)
+  logging.info(f"📦 Processing {len(chunkId_chunkDoc_list)} chunks")
+  logging.info(f"🎯 Current node count: {node_count}")
+  logging.info(f"🔗 Current relationship count: {rel_count}")
+  logging.info(f"🔧 Chunks to combine: {chunks_to_combine}")
+  logging.info(f"🎯 Allowed nodes: {allowedNodes}")
+  logging.info(f"🔗 Allowed relationships: {allowedRelationship}")
+  logging.info("=" * 80)
+  
   latency_processing_chunk = {}
   
   if graph is not None:
@@ -486,43 +550,53 @@ async def processing_chunks(chunkId_chunkDoc_list,graph,uri, userName, password,
     graph = create_graph_database_connection(uri, userName, password, database)
   
   start_update_embedding = time.time()
+  logging.info("🔍 Creating chunk embeddings...")
   create_chunk_embeddings( graph, chunkId_chunkDoc_list, file_name)
   end_update_embedding = time.time()
   elapsed_update_embedding = end_update_embedding - start_update_embedding
-  logging.info(f'Time taken to update embedding in chunk node: {elapsed_update_embedding:.2f} seconds')
+  logging.info(f'⏱️  Time taken to update embedding in chunk node: {elapsed_update_embedding:.2f} seconds')
   latency_processing_chunk["update_embedding"] = f'{elapsed_update_embedding:.2f}'
-  logging.info("Get graph document list from models")
+  logging.info("🤖 Getting graph document list from LLM models")
   
   start_entity_extraction = time.time()
+  logging.info("🧠 Starting entity extraction with LLM...")
   graph_documents =  await get_graph_from_llm(model, chunkId_chunkDoc_list, allowedNodes, allowedRelationship, chunks_to_combine, additional_instructions)
   end_entity_extraction = time.time()
   elapsed_entity_extraction = end_entity_extraction - start_entity_extraction
-  logging.info(f'Time taken to extract enitities from LLM Graph Builder: {elapsed_entity_extraction:.2f} seconds')
+  logging.info(f'⏱️  Time taken to extract entities from LLM Graph Builder: {elapsed_entity_extraction:.2f} seconds')
+  logging.info(f'📊 LLM returned {len(graph_documents)} graph documents')
   latency_processing_chunk["entity_extraction"] = f'{elapsed_entity_extraction:.2f}'
+  
+  logging.info("🧹 Cleaning graph documents...")
   cleaned_graph_documents = handle_backticks_nodes_relationship_id_type(graph_documents)
+  logging.info(f'✅ Cleaned {len(cleaned_graph_documents)} graph documents')
   
   start_save_graphDocuments = time.time()
+  logging.info("💾 Saving graph documents to Neo4j...")
   save_graphDocuments_in_neo4j(graph, cleaned_graph_documents)
   end_save_graphDocuments = time.time()
   elapsed_save_graphDocuments = end_save_graphDocuments - start_save_graphDocuments
-  logging.info(f'Time taken to save graph document in neo4j: {elapsed_save_graphDocuments:.2f} seconds')
+  logging.info(f'⏱️  Time taken to save graph document in neo4j: {elapsed_save_graphDocuments:.2f} seconds')
   latency_processing_chunk["save_graphDocuments"] = f'{elapsed_save_graphDocuments:.2f}'
-
-  chunks_and_graphDocuments_list = get_chunk_and_graphDocument(cleaned_graph_documents, chunkId_chunkDoc_list)
-
-  start_relationship = time.time()
-  merge_relationship_between_chunk_and_entites(graph, chunks_and_graphDocuments_list)
-  end_relationship = time.time()
-  elapsed_relationship = end_relationship - start_relationship
-  logging.info(f'Time taken to create relationship between chunk and entities: {elapsed_relationship:.2f} seconds')
-  latency_processing_chunk["relationship_between_chunk_entity"] = f'{elapsed_relationship:.2f}'
   
-  graphDb_data_Access = graphDBdataAccess(graph)
-  count_response = graphDb_data_Access.update_node_relationship_count(file_name)
-  node_count = count_response[file_name].get('nodeCount',"0")
-  rel_count = count_response[file_name].get('relationshipCount',"0")
+  # Get updated counts
+  logging.info("📊 Getting updated node and relationship counts...")
+  result = execute_graph_query(graph,QUERY_TO_GET_NODES_AND_RELATIONS_OF_A_DOCUMENT, params={"filename":file_name})
+  new_node_count = result[0]['nodes']
+  new_rel_count = result[0]['rels']
   
-  return node_count,rel_count,latency_processing_chunk
+  logging.info("=" * 80)
+  logging.info("📊 CHUNK PROCESSING RESULTS")
+  logging.info("=" * 80)
+  logging.info(f"📦 Chunks processed: {len(chunkId_chunkDoc_list)}")
+  logging.info(f"🎯 Nodes before: {node_count} → after: {new_node_count}")
+  logging.info(f"🔗 Relationships before: {rel_count} → after: {new_rel_count}")
+  logging.info(f"📈 New nodes created: {new_node_count - node_count}")
+  logging.info(f"📈 New relationships created: {new_rel_count - rel_count}")
+  logging.info(f"⏱️  Total processing time: {elapsed_update_embedding + elapsed_entity_extraction + elapsed_save_graphDocuments:.2f}s")
+  logging.info("=" * 80)
+  
+  return new_node_count, new_rel_count, latency_processing_chunk
 
 def get_chunkId_chunkDoc_list(graph, file_name, pages, token_chunk_size, chunk_overlap, retry_condition):
   if not retry_condition:

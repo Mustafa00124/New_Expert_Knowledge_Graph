@@ -201,29 +201,64 @@ def get_llm_model_name(llm):
     return ""
 
 def get_combined_chunks(chunkId_chunkDoc_list, chunks_to_combine):
+    """
+    Combines chunks based on chunks_to_combine parameter to prevent token limit issues.
+    
+    Args:
+        chunkId_chunkDoc_list: List of chunks with IDs and documents
+        chunks_to_combine: Maximum number of chunks to combine into one document
+    
+    Returns:
+        List of combined chunk documents
+    """
+    if not chunkId_chunkDoc_list:
+        return []
+    
+    # Ensure chunks_to_combine is at least 1
+    chunks_to_combine = max(1, chunks_to_combine)
+    
     combined_chunk_document_list = []
-    combined_chunks_page_content = [
-        "".join(
-            document["chunk_doc"].page_content
-            for document in chunkId_chunkDoc_list[i : i + chunks_to_combine]
+    
+    # Process chunks in batches of chunks_to_combine
+    for i in range(0, len(chunkId_chunkDoc_list), chunks_to_combine):
+        # Get the current batch of chunks
+        batch_end = min(i + chunks_to_combine, len(chunkId_chunkDoc_list))
+        batch_chunks = chunkId_chunkDoc_list[i:batch_end]
+        
+        # Combine the content of this batch
+        combined_content = ""
+        combined_ids = []
+        
+        for chunk_data in batch_chunks:
+            chunk_content = chunk_data["chunk_doc"].page_content
+            chunk_id = chunk_data["chunk_id"]
+            
+            # Add chunk content with separator
+            if combined_content:
+                combined_content += "\n\n---\n\n"  # Clear separator between chunks
+            combined_content += chunk_content
+            combined_ids.append(chunk_id)
+        
+        # Validate combined content size (rough estimate: 1 token ≈ 4 characters)
+        estimated_tokens = len(combined_content) // 4
+        if estimated_tokens > 8000:  # Conservative limit to stay well under OpenAI's 16K limit
+            logging.warning(f"⚠️  Combined chunk content is very large: ~{estimated_tokens} tokens. Consider reducing chunks_to_combine.")
+        
+        # Create combined document
+        combined_doc = Document(
+            page_content=combined_content,
+            metadata={
+                "combined_chunk_ids": combined_ids,
+                "estimated_tokens": estimated_tokens,
+                "chunks_combined": len(batch_chunks)
+            }
         )
-        for i in range(0, len(chunkId_chunkDoc_list), chunks_to_combine)
-    ]
-    combined_chunks_ids = [
-        [
-            document["chunk_id"]
-            for document in chunkId_chunkDoc_list[i : i + chunks_to_combine]
-        ]
-        for i in range(0, len(chunkId_chunkDoc_list), chunks_to_combine)
-    ]
-
-    for i in range(len(combined_chunks_page_content)):
-        combined_chunk_document_list.append(
-            Document(
-                page_content=combined_chunks_page_content[i],
-                metadata={"combined_chunk_ids": combined_chunks_ids[i]},
-            )
-        )
+        
+        combined_chunk_document_list.append(combined_doc)
+        
+        logging.info(f"📦 Combined {len(batch_chunks)} chunks into document {len(combined_chunk_document_list)} (~{estimated_tokens} tokens)")
+    
+    logging.info(f"✅ Total combined documents created: {len(combined_chunk_document_list)}")
     return combined_chunk_document_list
 
 def get_chunk_id_as_doc_metadata(chunkId_chunkDoc_list):
@@ -303,8 +338,26 @@ async def get_graph_from_llm(model, chunkId_chunkDoc_list, allowedNodes, allowed
        llm, model_name = get_llm(model)
        logging.info(f"Using model: {model_name}")
     
+       # Validate chunks_to_combine parameter
+       if chunks_to_combine <= 0:
+           chunks_to_combine = 1
+           logging.warning(f"⚠️  chunks_to_combine was {chunks_to_combine}, setting to 1 to prevent errors")
+       
        combined_chunk_document_list = get_combined_chunks(chunkId_chunkDoc_list, chunks_to_combine)
        logging.info(f"Combined {len(combined_chunk_document_list)} chunks")
+       
+       # SAFETY CHECK: Validate that no combined document is too large
+       for i, doc in enumerate(combined_chunk_document_list):
+           estimated_tokens = len(doc.page_content) // 4
+           if estimated_tokens > 12000:  # Conservative limit
+               logging.error(f"❌ Document {i+1} is too large: ~{estimated_tokens} tokens")
+               logging.error(f"   Content preview: {doc.page_content[:200]}...")
+               raise LLMGraphBuilderException(
+                   f"Combined chunk content is too large (~{estimated_tokens} tokens). "
+                   f"Reduce chunks_to_combine from {chunks_to_combine} to a smaller value."
+               )
+           elif estimated_tokens > 8000:
+               logging.warning(f"⚠️  Document {i+1} is large: ~{estimated_tokens} tokens. Consider reducing chunks_to_combine.")
     
        allowed_nodes = [node.strip() for node in allowedNodes.split(',') if node.strip()]
        logging.info(f"Allowed nodes: {allowed_nodes}")

@@ -4,7 +4,7 @@ from neo4j import GraphDatabase
 import os
 import json
 
-from src.shared.constants import GRAPH_CHUNK_LIMIT,GRAPH_QUERY,CHUNK_TEXT_QUERY,COUNT_CHUNKS_QUERY,SCHEMA_VISUALIZATION_QUERY
+from src.shared.constants import GRAPH_CHUNK_LIMIT,GRAPH_QUERY,CHUNK_TEXT_QUERY,COUNT_CHUNKS_QUERY,SCHEMA_VISUALIZATION_QUERY, CHUNK_TEXT_OFFSET
 
 def get_graphDB_driver(uri, username, password,database="neo4j"):
     """
@@ -201,28 +201,68 @@ def get_graph_results(uri, username, password,database,document_names):
     dict: Contains the session ID, user-defined messages with nodes and relationships, and the user module identifier.
     """
     try:
-        logging.info(f"Starting graph query process")
+        logging.info("=" * 80)
+        logging.info("🔍 STARTING GRAPH QUERY")
+        logging.info("=" * 80)
+        logging.info(f"📁 Document names: {document_names}")
+        logging.info(f"⚙️  GRAPH_CHUNK_LIMIT: {GRAPH_CHUNK_LIMIT}")
+        
         driver = get_graphDB_driver(uri, username, password,database)  
         document_names= list(map(str, json.loads(document_names)))
         query = GRAPH_QUERY.format(graph_chunk_limit=GRAPH_CHUNK_LIMIT)
+        
+        logging.info(f"🔍 Executing graph query with limit: {GRAPH_CHUNK_LIMIT}")
         records, summary , keys = execute_query(driver, query.strip(), document_names)
+        
+        logging.info(f"📊 Query execution completed")
+        logging.info(f"📄 Records returned: {len(records)}")
+        logging.info(f"🔑 Keys: {keys}")
+        
         document_nodes = extract_node_elements(records)
         document_relationships = extract_relationships(records)
 
-        logging.info(f"no of nodes : {len(document_nodes)}")
-        logging.info(f"no of relations : {len(document_relationships)}")
+        logging.info(f"📊 GRAPH QUERY RESULTS:")
+        logging.info(f"   🎯 Nodes extracted: {len(document_nodes)}")
+        logging.info(f"   🔗 Relationships extracted: {len(document_relationships)}")
+        
+        # Log node type distribution
+        node_types = {}
+        for node in document_nodes:
+            if 'labels' in node:
+                for label in node['labels']:
+                    node_types[label] = node_types.get(label, 0) + 1
+        
+        if node_types:
+            logging.info(f"   📊 Node type distribution:")
+            for label, count in node_types.items():
+                logging.info(f"      {label}: {count}")
+        
+        # Log relationship type distribution
+        rel_types = {}
+        for rel in document_relationships:
+            if 'type' in rel:
+                rel_type = rel['type']
+                rel_types[rel_type] = rel_types.get(rel_type, 0) + 1
+        
+        if rel_types:
+            logging.info(f"   📊 Relationship type distribution:")
+            for rel_type, count in rel_types.items():
+                logging.info(f"      {rel_type}: {count}")
+        
         result = {
             "nodes": document_nodes,
             "relationships": document_relationships
         }
 
-        logging.info(f"Query process completed successfully")
+        logging.info(f"✅ Graph query process completed successfully")
+        logging.info("=" * 80)
         return result
     except Exception as e:
+        logging.error(f"❌ Graph query failed: {str(e)}")
         logging.error(f"graph_query module: An error occurred in get_graph_results. Error: {str(e)}")
         raise Exception(f"graph_query module: An error occurred in get_graph_results. Please check the logs for more details.") from e
     finally:
-        logging.info("Closing connection for graph_query api")
+        logging.info("🔌 Closing connection for graph_query api")
         driver.close()
 
 
@@ -230,16 +270,35 @@ def get_chunktext_results(uri, username, password, database, document_name, page
    """Retrieves chunk text, position, and page number from graph data with pagination."""
    driver = None
    try:
-       logging.info("Starting chunk text query process")
-       offset = 10
+       logging.info("=" * 60)
+       logging.info("📄 STARTING CHUNK TEXT QUERY")
+       logging.info("=" * 60)
+       logging.info(f"📁 Document: {document_name}")
+       logging.info(f"📄 Page number: {page_no}")
+       logging.info(f"⚙️  CHUNK_TEXT_OFFSET: {CHUNK_TEXT_OFFSET}")
+       
+       offset = CHUNK_TEXT_OFFSET  # Use configurable constant instead of hard-coded value
        skip = (page_no - 1) * offset
        limit = offset
+       
+       logging.info(f"📊 Pagination settings:")
+       logging.info(f"   ➡️  Offset: {offset}")
+       logging.info(f"   ➡️  Skip: {skip}")
+       logging.info(f"   ➡️  Limit: {limit}")
+       
        driver = get_graphDB_driver(uri, username, password,database)  
        with driver.session(database=database) as session:
+           logging.info("🔍 Getting total chunk count...")
            total_chunks_result = session.run(COUNT_CHUNKS_QUERY, file_name=document_name)
            total_chunks = total_chunks_result.single()["total_chunks"]
            total_pages = (total_chunks + offset - 1) // offset  # Calculate total pages
+           
+           logging.info(f"📊 Total chunks in document: {total_chunks}")
+           logging.info(f"📄 Total pages available: {total_pages}")
+           
+           logging.info(f"🔍 Executing chunk text query...")
            records = session.run(CHUNK_TEXT_QUERY, file_name=document_name, skip=skip, limit=limit)
+           
            pageitems = [
                {
                    "text": record["chunk_text"],
@@ -248,16 +307,29 @@ def get_chunktext_results(uri, username, password, database, document_name, page
                }
                for record in records
            ]
-           logging.info(f"Query process completed with {len(pageitems)} chunks retrieved")
+           
+           logging.info(f"✅ Chunk text query completed successfully")
+           logging.info(f"📊 Results for page {page_no}:")
+           logging.info(f"   ➡️  Chunks retrieved: {len(pageitems)}")
+           logging.info(f"   ➡️  Total chunks: {total_chunks}")
+           logging.info(f"   ➡️  Total pages: {total_pages}")
+           
+           # Log chunk details
+           for i, item in enumerate(pageitems):
+               logging.info(f"      📄 Chunk {i+1}: position {item['position']}, page {item['pagenumber']}, {len(item['text'])} chars")
+           
+           logging.info("=" * 60)
            return {
                "pageitems": pageitems,
                "total_pages": total_pages
            }
    except Exception as e:
+       logging.error(f"❌ Chunk text query failed: {str(e)}")
        logging.error(f"An error occurred in get_chunktext_results. Error: {str(e)}")
        raise Exception("An error occurred in get_chunktext_results. Please check the logs for more details.") from e
    finally:
        if driver:
+           logging.info("🔌 Closing database connection")
            driver.close()
 
 
